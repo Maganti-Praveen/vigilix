@@ -1,0 +1,605 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Smart CCTV — Web Viewer</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: #0A0E1A;
+      color: #E2E8F0;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 24px;
+    }
+
+    h1 {
+      font-size: 28px;
+      font-weight: 800;
+      margin-bottom: 4px;
+      background: linear-gradient(135deg, #3B82F6, #8B5CF6);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+    .subtitle { color: #64748B; font-size: 14px; margin-bottom: 32px; }
+
+    /* Status */
+    .status-bar {
+      display: flex; gap: 16px; margin-bottom: 24px; align-items: center;
+    }
+    .status-dot {
+      width: 10px; height: 10px; border-radius: 50%;
+      display: inline-block; margin-right: 6px;
+    }
+    .status-dot.green { background: #22C55E; box-shadow: 0 0 8px #22C55E; }
+    .status-dot.red { background: #EF4444; }
+    .status-dot.yellow { background: #F59E0B; animation: pulse 1.5s infinite; }
+    @keyframes pulse { 0%,100% { opacity: 1; } 50% { opacity: 0.4; } }
+
+    .status-label { font-size: 13px; color: #94A3B8; }
+
+    /* Join form */
+    .join-card {
+      background: rgba(255,255,255,0.04);
+      border: 1px solid rgba(255,255,255,0.08);
+      border-radius: 16px;
+      padding: 32px;
+      width: 100%;
+      max-width: 480px;
+      text-align: center;
+      backdrop-filter: blur(12px);
+    }
+    .join-card h2 { font-size: 18px; margin-bottom: 20px; font-weight: 600; }
+
+    .code-input {
+      background: rgba(255,255,255,0.06);
+      border: 1px solid rgba(255,255,255,0.12);
+      border-radius: 12px;
+      padding: 16px;
+      font-size: 28px;
+      font-family: 'SF Mono', 'Courier New', monospace;
+      letter-spacing: 12px;
+      text-align: center;
+      color: #E2E8F0;
+      width: 100%;
+      outline: none;
+      text-transform: uppercase;
+      transition: border-color 0.2s;
+    }
+    .code-input:focus { border-color: #3B82F6; }
+    .code-input::placeholder { letter-spacing: 4px; font-size: 16px; color: #475569; }
+
+    .join-btn {
+      background: linear-gradient(135deg, #3B82F6, #2563EB);
+      color: white;
+      border: none;
+      border-radius: 12px;
+      padding: 14px 32px;
+      font-size: 16px;
+      font-weight: 600;
+      cursor: pointer;
+      width: 100%;
+      margin-top: 16px;
+      transition: transform 0.15s, opacity 0.15s;
+    }
+    .join-btn:hover { transform: translateY(-1px); }
+    .join-btn:active { transform: translateY(0); opacity: 0.9; }
+    .join-btn:disabled { opacity: 0.4; cursor: not-allowed; transform: none; }
+
+    .disconnect-btn {
+      background: linear-gradient(135deg, #EF4444, #DC2626);
+      color: white;
+      border: none;
+      border-radius: 12px;
+      padding: 12px 28px;
+      font-size: 15px;
+      font-weight: 600;
+      cursor: pointer;
+      margin-top: 16px;
+      transition: transform 0.15s;
+    }
+    .disconnect-btn:hover { transform: translateY(-1px); }
+
+    /* Video */
+    .video-container {
+      width: 100%;
+      max-width: 800px;
+      border-radius: 16px;
+      overflow: hidden;
+      background: #000;
+      border: 1px solid rgba(255,255,255,0.08);
+      position: relative;
+      margin-bottom: 16px;
+    }
+    video {
+      width: 100%;
+      display: block;
+      background: #000;
+    }
+    .video-overlay {
+      position: absolute;
+      top: 12px; left: 12px;
+      display: flex; gap: 8px;
+    }
+    .live-badge {
+      background: rgba(239, 68, 68, 0.9);
+      color: white;
+      padding: 4px 12px;
+      border-radius: 20px;
+      font-size: 12px;
+      font-weight: 700;
+      letter-spacing: 1px;
+      animation: pulse 2s infinite;
+    }
+    .room-badge {
+      background: rgba(17,24,39,0.8);
+      color: #94A3B8;
+      padding: 4px 12px;
+      border-radius: 20px;
+      font-size: 12px;
+      font-weight: 500;
+      backdrop-filter: blur(8px);
+    }
+
+    .waiting {
+      width: 100%;
+      aspect-ratio: 16/9;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      color: #64748B;
+      font-size: 16px;
+    }
+    .waiting-icon { font-size: 48px; margin-bottom: 12px; }
+
+    /* Logs */
+    .log-card {
+      background: rgba(255,255,255,0.02);
+      border: 1px solid rgba(255,255,255,0.06);
+      border-radius: 12px;
+      padding: 16px;
+      width: 100%;
+      max-width: 800px;
+      margin-top: 24px;
+    }
+    .log-card h3 { font-size: 13px; color: #64748B; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 8px; }
+    #logs {
+      font-family: 'SF Mono', 'Courier New', monospace;
+      font-size: 12px;
+      color: #94A3B8;
+      max-height: 200px;
+      overflow-y: auto;
+      line-height: 1.6;
+    }
+    .log-success { color: #22C55E; }
+    .log-error { color: #EF4444; }
+    .log-info { color: #3B82F6; }
+
+    .ctrl-btn {
+      background: rgba(255,255,255,0.06);
+      border: 1px solid rgba(255,255,255,0.12);
+      color: #E2E8F0;
+      border-radius: 10px;
+      padding: 10px 20px;
+      font-size: 14px;
+      font-weight: 500;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    .ctrl-btn:hover { background: rgba(255,255,255,0.12); border-color: #3B82F6; }
+    .ctrl-btn.active { background: rgba(59,130,246,0.2); border-color: #3B82F6; color: #3B82F6; }
+  </style>
+</head>
+<body>
+  <h1>📹 Smart CCTV</h1>
+  <p class="subtitle">Web Viewer — Watch your camera stream from the browser</p>
+
+  <div class="status-bar">
+    <span>
+      <span class="status-dot" id="socketDot"></span>
+      <span class="status-label" id="socketStatus">Disconnected</span>
+    </span>
+    <span>
+      <span class="status-dot" id="webrtcDot"></span>
+      <span class="status-label" id="webrtcStatus">No stream</span>
+    </span>
+  </div>
+
+  <!-- Join form -->
+  <div id="joinSection" class="join-card">
+    <h2>🔗 Connect to Camera</h2>
+    <input type="text" id="codeInput" class="code-input" placeholder="Room Code" maxlength="6" autocomplete="off">
+    <button id="joinBtn" class="join-btn" disabled>Connect</button>
+  </div>
+
+  <!-- Video section (hidden initially) -->
+  <div id="videoSection" style="display:none; width:100%; max-width:800px; text-align:center;">
+    <div class="video-container" id="videoContainer">
+      <video id="remoteVideo" autoplay playsinline></video>
+      <div class="video-overlay">
+        <span class="live-badge">● LIVE</span>
+        <span class="room-badge" id="roomBadge"></span>
+        <span class="room-badge" id="batteryBadge" style="display:none"></span>
+      </div>
+      <div class="waiting" id="waitingOverlay">
+        <span class="waiting-icon">📡</span>
+        <span>Waiting for camera stream...</span>
+      </div>
+    </div>
+
+    <!-- Controls -->
+    <div style="display:flex; gap:12px; justify-content:center; margin: 12px 0; flex-wrap:wrap;">
+      <button class="ctrl-btn" id="talkBtn" title="Talk Back">🎙️ Talk</button>
+      <button class="ctrl-btn" id="flashBtn" title="Toggle Flash">🔦 Flash</button>
+      <button class="ctrl-btn" id="screenshotBtn" title="Take Screenshot">📸 Screenshot</button>
+      <button class="ctrl-btn" id="fullscreenBtn" title="Fullscreen">⛶ Fullscreen</button>
+    </div>
+
+    <button class="disconnect-btn" id="disconnectBtn">⏹ Disconnect</button>
+  </div>
+
+  <!-- Logs -->
+  <div class="log-card">
+    <h3>Connection Log</h3>
+    <div id="logs"></div>
+  </div>
+
+  <!-- Socket.IO Client -->
+  <script src="https://cdn.socket.io/4.7.5/socket.io.min.js"></script>
+  <script>
+    // ─── Config ──────────────────────────────────────────────
+    const SERVER_URL = 'http://192.168.31.53:3001';
+
+    const ICE_CONFIG = {
+      iceServers: [
+        { urls: 'stun:stun.l.google.com:19302' },
+        { urls: 'stun:stun1.l.google.com:19302' },
+      ]
+    };
+
+    // ─── DOM Elements ────────────────────────────────────────
+    const codeInput = document.getElementById('codeInput');
+    const joinBtn = document.getElementById('joinBtn');
+    const joinSection = document.getElementById('joinSection');
+    const videoSection = document.getElementById('videoSection');
+    const remoteVideo = document.getElementById('remoteVideo');
+    const roomBadge = document.getElementById('roomBadge');
+    const waitingOverlay = document.getElementById('waitingOverlay');
+    const disconnectBtn = document.getElementById('disconnectBtn');
+    const socketDot = document.getElementById('socketDot');
+    const socketStatus = document.getElementById('socketStatus');
+    const webrtcDot = document.getElementById('webrtcDot');
+    const webrtcStatus = document.getElementById('webrtcStatus');
+    const logsDiv = document.getElementById('logs');
+
+    // ─── State ───────────────────────────────────────────────
+    let socket = null;
+    let peerConnection = null;
+    let currentRoomCode = null;
+    let localMicStream = null;
+    let talkOn = false;
+    let flashOn = false;
+
+    // ─── Logging ─────────────────────────────────────────────
+    function log(msg, type = '') {
+      const time = new Date().toLocaleTimeString();
+      const cls = type === 'ok' ? 'log-success' : type === 'err' ? 'log-error' : 'log-info';
+      logsDiv.innerHTML += `<div class="${cls}">[${time}] ${msg}</div>`;
+      logsDiv.scrollTop = logsDiv.scrollHeight;
+      console.log(`[WebViewer] ${msg}`);
+    }
+
+    // ─── Socket ──────────────────────────────────────────────
+    function connectSocket() {
+      log('Connecting to server: ' + SERVER_URL);
+      socket = io(SERVER_URL, {
+        transports: ['polling', 'websocket'],
+        upgrade: true,
+        reconnection: true,
+        timeout: 15000,
+      });
+
+      socket.on('connect', () => {
+        log('✅ Socket connected! ID: ' + socket.id, 'ok');
+        socketDot.className = 'status-dot green';
+        socketStatus.textContent = 'Connected';
+      });
+
+      socket.on('disconnect', (reason) => {
+        log('❌ Socket disconnected: ' + reason, 'err');
+        socketDot.className = 'status-dot red';
+        socketStatus.textContent = 'Disconnected';
+      });
+
+      socket.on('connect_error', (err) => {
+        log('❌ Connection error: ' + err.message, 'err');
+        socketDot.className = 'status-dot red';
+        socketStatus.textContent = 'Error';
+      });
+
+      // WebRTC: receive offer from camera
+      socket.on('offer', async ({ sdp, senderSocketId }) => {
+        log('📥 Received offer from camera: ' + senderSocketId);
+        await handleOffer(sdp, senderSocketId);
+      });
+
+      // WebRTC: receive ICE candidate
+      socket.on('ice-candidate', async ({ candidate }) => {
+        if (peerConnection && candidate) {
+          try {
+            await peerConnection.addIceCandidate(new RTCIceCandidate(candidate));
+          } catch (e) {
+            log('ICE candidate error: ' + e.message, 'err');
+          }
+        }
+      });
+
+      // Stream events
+      socket.on('stream-started', () => {
+        log('📡 Camera started streaming', 'ok');
+      });
+
+      socket.on('stream-stopped', () => {
+        log('⏹ Camera stopped streaming', 'err');
+        waitingOverlay.style.display = 'flex';
+        webrtcDot.className = 'status-dot yellow';
+        webrtcStatus.textContent = 'Stream stopped';
+      });
+
+      socket.on('camera-offline', () => {
+        log('📷 Camera went offline', 'err');
+        webrtcDot.className = 'status-dot red';
+        webrtcStatus.textContent = 'Camera offline';
+        waitingOverlay.style.display = 'flex';
+        waitingOverlay.querySelector('span:last-child').textContent = 'Camera disconnected. Waiting for reconnection...';
+      });
+
+      socket.on('camera-reconnected', () => {
+        log('📷 Camera reconnected!', 'ok');
+        webrtcDot.className = 'status-dot yellow';
+        webrtcStatus.textContent = 'Camera back online';
+        waitingOverlay.querySelector('span:last-child').textContent = 'Camera reconnected, waiting for stream...';
+      });
+
+      // Phase 9: Auto-rejoin room after socket reconnects
+      socket.io.on('reconnect', () => {
+        log('🔄 Socket reconnected', 'ok');
+        if (currentRoomCode) {
+          log('🔄 Auto-rejoining room: ' + currentRoomCode);
+          socket.emit('reconnect-to-room', { roomCode: currentRoomCode, role: 'viewer' });
+        }
+      });
+
+      // Battery status from camera
+      socket.on('battery-status-update', ({ level, isCharging }) => {
+        const batteryBadge = document.getElementById('batteryBadge');
+        if (batteryBadge) {
+          const pct = Math.round(level * 100);
+          batteryBadge.textContent = '🔋 ' + pct + '%' + (isCharging ? ' ⚡' : '');
+          batteryBadge.style.display = 'inline';
+          if (pct < 20) {
+            batteryBadge.style.borderColor = 'rgba(239,68,68,0.5)';
+            batteryBadge.style.color = '#EF4444';
+          } else {
+            batteryBadge.style.borderColor = '';
+            batteryBadge.style.color = '';
+          }
+        }
+      });
+    }
+
+    // ─── Join Room ───────────────────────────────────────────
+    function joinRoom(code) {
+      log('🚪 Joining room: ' + code);
+      socket.emit('join-room', { roomCode: code }, (response) => {
+        log('🚪 Join response: ' + JSON.stringify(response));
+
+        if (response.success) {
+          currentRoomCode = response.roomCode;
+          roomBadge.textContent = 'Room: ' + currentRoomCode;
+          joinSection.style.display = 'none';
+          videoSection.style.display = 'block';
+          log('✅ Joined room ' + currentRoomCode, 'ok');
+
+          webrtcDot.className = 'status-dot yellow';
+          webrtcStatus.textContent = 'Waiting for stream';
+        } else {
+          log('❌ Failed to join: ' + (response.error || 'Unknown error'), 'err');
+          alert('Failed to join room: ' + (response.error || 'Room not found'));
+        }
+      });
+    }
+
+    // ─── WebRTC: Handle Offer ────────────────────────────────
+    async function handleOffer(sdp, cameraSocketId) {
+      log('🔧 Creating peer connection...');
+
+      peerConnection = new RTCPeerConnection(ICE_CONFIG);
+
+      // ICE candidates → send to camera
+      peerConnection.onicecandidate = (event) => {
+        if (event.candidate) {
+          socket.emit('ice-candidate', {
+            targetSocketId: cameraSocketId,
+            candidate: event.candidate,
+          });
+        }
+      };
+
+      // Receive remote stream
+      peerConnection.ontrack = (event) => {
+        log('🎬 Remote track received!', 'ok');
+        if (event.streams && event.streams[0]) {
+          remoteVideo.srcObject = event.streams[0];
+          waitingOverlay.style.display = 'none';
+          webrtcDot.className = 'status-dot green';
+          webrtcStatus.textContent = 'Streaming';
+          log('✅ Video stream connected!', 'ok');
+        }
+      };
+
+      // Connection state
+      peerConnection.oniceconnectionstatechange = () => {
+        const state = peerConnection.iceConnectionState;
+        log('ICE state: ' + state);
+        if (state === 'connected' || state === 'completed') {
+          webrtcDot.className = 'status-dot green';
+          webrtcStatus.textContent = 'Connected';
+        } else if (state === 'disconnected' || state === 'failed') {
+          webrtcDot.className = 'status-dot red';
+          webrtcStatus.textContent = 'Disconnected';
+        }
+      };
+
+      // Set remote description (the offer)
+      await peerConnection.setRemoteDescription(new RTCSessionDescription(sdp));
+      log('📋 Remote description set');
+
+      // Get viewer's microphone for talk-back (starts muted)
+      try {
+        localMicStream = await navigator.mediaDevices.getUserMedia({ audio: true, video: false });
+        localMicStream.getAudioTracks().forEach(track => {
+          track.enabled = false; // muted by default
+          peerConnection.addTrack(track, localMicStream);
+        });
+        log('🎙️ Mic acquired for talk-back (muted)', 'ok');
+      } catch (micErr) {
+        log('⚠️ Mic not available: ' + micErr.message, 'err');
+      }
+
+      // Create and send answer
+      const answer = await peerConnection.createAnswer();
+      await peerConnection.setLocalDescription(answer);
+      log('📤 Sending answer to camera (with talk-back audio)');
+
+      socket.emit('answer', {
+        targetSocketId: cameraSocketId,
+        sdp: answer,
+      });
+    }
+
+    // ─── Disconnect ──────────────────────────────────────────
+    function disconnect() {
+      if (peerConnection) {
+        peerConnection.close();
+        peerConnection = null;
+      }
+      if (localMicStream) {
+        localMicStream.getTracks().forEach(t => t.stop());
+        localMicStream = null;
+      }
+      remoteVideo.srcObject = null;
+      waitingOverlay.style.display = 'flex';
+      waitingOverlay.querySelector('span:last-child').textContent = 'Waiting for camera stream...';
+      if (socket) {
+        socket.emit('leave-room');
+      }
+      currentRoomCode = null;
+      videoSection.style.display = 'none';
+      joinSection.style.display = 'block';
+      codeInput.value = '';
+      webrtcDot.className = 'status-dot red';
+      webrtcStatus.textContent = 'No stream';
+
+      // Reset control button states
+      talkOn = false;
+      flashOn = false;
+      document.getElementById('talkBtn').classList.remove('active');
+      document.getElementById('talkBtn').textContent = '🎙️ Talk';
+      document.getElementById('flashBtn').classList.remove('active');
+      document.getElementById('flashBtn').textContent = '🔦 Flash';
+      document.getElementById('batteryBadge').style.display = 'none';
+
+      log('Disconnected from room');
+    }
+
+    // ─── Event Listeners ─────────────────────────────────────
+    codeInput.addEventListener('input', () => {
+      codeInput.value = codeInput.value.toUpperCase();
+      joinBtn.disabled = codeInput.value.trim().length < 4;
+    });
+
+    joinBtn.addEventListener('click', () => {
+      const code = codeInput.value.trim().toUpperCase();
+      if (code.length >= 4 && socket?.connected) {
+        joinRoom(code);
+      }
+    });
+
+    codeInput.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') joinBtn.click();
+    });
+
+    disconnectBtn.addEventListener('click', disconnect);
+
+    // ─── Talk-Back Toggle ────────────────────────────────────
+    const talkBtn = document.getElementById('talkBtn');
+
+    talkBtn.addEventListener('click', () => {
+      if (!localMicStream) {
+        log('⚠️ Mic not available for talk-back', 'err');
+        return;
+      }
+      talkOn = !talkOn;
+      localMicStream.getAudioTracks().forEach(track => {
+        track.enabled = talkOn;
+      });
+      talkBtn.classList.toggle('active', talkOn);
+      talkBtn.textContent = talkOn ? '🎙️ Talking...' : '🎙️ Talk';
+      log(`🎙️ Talk-back ${talkOn ? 'ON' : 'OFF'}`, 'ok');
+    });
+
+    // ─── Flash Toggle ────────────────────────────────────────
+    const flashBtn = document.getElementById('flashBtn');
+    const batteryBadge = document.getElementById('batteryBadge');
+
+    flashBtn.addEventListener('click', () => {
+      if (!currentRoomCode) return;
+      flashOn = !flashOn;
+      socket.emit('toggle-flash', { roomCode: currentRoomCode, enabled: flashOn });
+      flashBtn.classList.toggle('active', flashOn);
+      flashBtn.textContent = flashOn ? '🔦 Flash ON' : '🔦 Flash';
+      log(`🔦 Flash ${flashOn ? 'ON' : 'OFF'}`, 'ok');
+    });
+
+    // ─── Screenshot ──────────────────────────────────────────
+    document.getElementById('screenshotBtn').addEventListener('click', () => {
+      const video = document.getElementById('remoteVideo');
+      if (!video.srcObject) { alert('No stream to capture'); return; }
+
+      const canvas = document.createElement('canvas');
+      canvas.width = video.videoWidth;
+      canvas.height = video.videoHeight;
+      canvas.getContext('2d').drawImage(video, 0, 0);
+
+      const link = document.createElement('a');
+      link.download = `smartcctv_${new Date().toISOString().slice(0,19).replace(/:/g,'-')}.png`;
+      link.href = canvas.toDataURL('image/png');
+      link.click();
+      log('📸 Screenshot saved!', 'ok');
+    });
+
+    // ─── Fullscreen ──────────────────────────────────────────
+    document.getElementById('fullscreenBtn').addEventListener('click', () => {
+      const container = document.getElementById('videoContainer');
+      if (!document.fullscreenElement) {
+        container.requestFullscreen().catch(err => log('Fullscreen error: ' + err.message, 'err'));
+      } else {
+        document.exitFullscreen();
+      }
+    });
+
+    // ─── Battery Status from Camera ──────────────────────────
+    // Listen for battery updates if the camera sends them
+    // (Camera device can emit battery-status periodically)
+
+    // ─── Start ───────────────────────────────────────────────
+    connectSocket();
+  </script>
+</body>
+</html>
