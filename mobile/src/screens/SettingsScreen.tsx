@@ -15,15 +15,32 @@ import { VCard } from '../components/ui/VCard';
 import { VIconButton } from '../components/ui/VIconButton';
 import { useFadeIn, useSlideUp } from '../design/animations';
 import { Animated } from 'react-native';
+import { useAuthStore } from '../store/authStore';
 
 interface SettingsScreenProps {
   onBack: () => void;
+  onLogout?: () => void;
 }
 
-export function SettingsScreen({ onBack }: SettingsScreenProps) {
+export function SettingsScreen({ onBack, onLogout }: SettingsScreenProps) {
   const { theme, isDark, toggleTheme } = useTheme();
+  const { user, logout, isAuthenticated } = useAuthStore();
   const headerOpacity = useFadeIn(0);
   const contentAnim = useSlideUp(100, 20);
+
+  const handleLogout = useCallback(() => {
+    Alert.alert('Logout', 'Are you sure you want to sign out?', [
+      { text: 'Cancel', style: 'cancel' },
+      {
+        text: 'Sign Out',
+        style: 'destructive',
+        onPress: async () => {
+          await logout();
+          onLogout?.();
+        },
+      },
+    ]);
+  }, [logout, onLogout]);
 
   return (
     <View style={[styles.container, { backgroundColor: theme.bg.primary }]}>
@@ -117,6 +134,35 @@ export function SettingsScreen({ onBack }: SettingsScreenProps) {
               <SettingRow icon="💬" label="Send Feedback" arrow />
             </VCard>
           </Animated.View>
+
+          {/* Account */}
+          {isAuthenticated && (
+            <Animated.View style={[{ marginBottom: spacing['6'] }, {
+              opacity: contentAnim.opacity,
+              transform: contentAnim.transform,
+            }]}>
+              <Text style={[styles.sectionLabel, { color: theme.text.tertiary }]}>
+                Account
+              </Text>
+              <VCard>
+                <View style={styles.aboutHeader}>
+                  <View style={[styles.avatarCircle, { backgroundColor: theme.accent.primary }]}>
+                    <Text style={styles.avatarText}>
+                      {user?.name?.charAt(0)?.toUpperCase() || '?'}
+                    </Text>
+                  </View>
+                  <View>
+                    <Text style={[styles.aboutName, { color: theme.text.primary }]}>{user?.name}</Text>
+                    <Text style={[styles.aboutVersion, { color: theme.text.tertiary }]}>{user?.email}</Text>
+                  </View>
+                </View>
+                <Divider />
+                <TouchableOpacity onPress={handleLogout}>
+                  <SettingRow icon="🚪" label="Sign Out" arrow />
+                </TouchableOpacity>
+              </VCard>
+            </Animated.View>
+          )}
         </ScrollView>
       </SafeAreaView>
     </View>
@@ -231,5 +277,17 @@ const styles = StyleSheet.create({
   aboutVersion: {
     fontSize: typography.size.sm,
     fontFamily: typography.fontFamily.regular,
+  },
+  avatarCircle: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  avatarText: {
+    fontSize: 20,
+    fontFamily: typography.fontFamily.bold,
+    color: '#FFFFFF',
   },
 });

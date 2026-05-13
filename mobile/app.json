@@ -49,7 +49,8 @@
           "cameraPermission": "Vigilix needs camera access to stream video",
           "microphonePermission": "Vigilix needs microphone access for two-way audio"
         }
-      ]
+      ],
+      "expo-secure-store"
     ]
   }
 }
