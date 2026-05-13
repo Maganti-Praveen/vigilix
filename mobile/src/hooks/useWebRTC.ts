@@ -76,6 +76,8 @@ export function useWebRTC() {
             if (state === 'connected' || state === 'completed') {
               setPeerConnected(true);
               setConnectionStatus('connected');
+              // Boost audio bitrate for better voice quality
+              webrtcService.setAudioBitrate(64000);
             } else if (state === 'disconnected' || state === 'failed') {
               setPeerConnected(false);
               setConnectionStatus('reconnecting');
@@ -144,6 +146,8 @@ export function useWebRTC() {
             if (state === 'connected' || state === 'completed') {
               setPeerConnected(true);
               setConnectionStatus('connected');
+              // Boost audio bitrate for better voice quality
+              webrtcService.setAudioBitrate(64000);
             } else if (state === 'disconnected' || state === 'failed') {
               setPeerConnected(false);
               setConnectionStatus('reconnecting');

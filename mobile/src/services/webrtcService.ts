@@ -14,6 +14,16 @@ import {
 import { WEBRTC_CONFIG, VIDEO_QUALITY_PRESETS } from '../constants';
 import type { VideoQualityPreset } from '../types';
 
+// Optimized audio constraints for maximum clarity and volume
+const AUDIO_CONSTRAINTS = {
+  echoCancellation: true,
+  noiseSuppression: true,
+  autoGainControl: true,      // Auto-amplifies mic input
+  sampleRate: 48000,          // High sample rate for clarity
+  channelCount: 1,            // Mono (saves bandwidth)
+  sampleSize: 16,             // 16-bit audio
+};
+
 // react-native-webrtc uses event-based API with addEventListener
 // and some properties differ from the W3C spec
 
@@ -55,7 +65,7 @@ class WebRTCService {
       const preset = VIDEO_QUALITY_PRESETS[quality];
 
       const stream = await mediaDevices.getUserMedia({
-        audio: true,
+        audio: AUDIO_CONSTRAINTS,
         video: {
           facingMode,
           width: { ideal: preset.width },
@@ -82,7 +92,7 @@ class WebRTCService {
   async getAudioOnlyStream(): Promise<MediaStream> {
     try {
       const stream = await mediaDevices.getUserMedia({
-        audio: true,
+        audio: AUDIO_CONSTRAINTS,
         video: false,
       });
 
@@ -175,8 +185,13 @@ class WebRTCService {
         offerToReceiveVideo: true,
       } as any);
 
+      // Prefer Opus codec for better audio quality
+      if (offer.sdp) {
+        offer.sdp = this.preferOpusCodec(offer.sdp);
+      }
+
       await this.peerConnection.setLocalDescription(offer as any);
-      console.log('[WebRTC] Offer created and set as local description');
+      console.log('[WebRTC] Offer created (Opus preferred) and set as local description');
       return offer;
     } catch (error) {
       console.error('[WebRTC] Error creating offer:', error);
@@ -194,8 +209,14 @@ class WebRTCService {
 
     try {
       const answer = await this.peerConnection.createAnswer();
+
+      // Prefer Opus codec for better audio quality
+      if (answer.sdp) {
+        answer.sdp = this.preferOpusCodec(answer.sdp);
+      }
+
       await this.peerConnection.setLocalDescription(answer as any);
-      console.log('[WebRTC] Answer created and set as local description');
+      console.log('[WebRTC] Answer created (Opus preferred) and set as local description');
       return answer;
     } catch (error) {
       console.error('[WebRTC] Error creating answer:', error);
@@ -392,6 +413,90 @@ class WebRTCService {
       }
     } catch (error) {
       console.warn('[WebRTC] Error setting bitrate:', error);
+    }
+  }
+
+  /**
+   * Set audio bitrate for better voice quality
+   * Default WebRTC audio is ~32kbps, we boost to 64kbps
+   */
+  async setAudioBitrate(maxBitrate: number = 64000): Promise<void> {
+    if (!this.peerConnection) return;
+
+    try {
+      const senders = (this.peerConnection as any).getSenders();
+      for (const sender of senders) {
+        if (sender.track?.kind === 'audio') {
+          const params = sender.getParameters();
+          if (!params.encodings || params.encodings.length === 0) {
+            params.encodings = [{}];
+          }
+          params.encodings[0].maxBitrate = maxBitrate;
+          await sender.setParameters(params);
+          console.log(`[WebRTC] 🎙️ Audio bitrate set to: ${maxBitrate / 1000}kbps`);
+        }
+      }
+    } catch (error) {
+      console.warn('[WebRTC] Error setting audio bitrate:', error);
+    }
+  }
+
+  /**
+   * Prefer Opus codec in SDP for better audio quality
+   * Opus provides better quality at lower bitrates than other codecs
+   */
+  private preferOpusCodec(sdp: string): string {
+    try {
+      const lines = sdp.split('\r\n');
+      let opusPayload: string | null = null;
+
+      // Find Opus payload type
+      for (const line of lines) {
+        if (line.includes('opus/48000')) {
+          const match = line.match(/^a=rtpmap:(\d+)\s+opus/);
+          if (match) {
+            opusPayload = match[1];
+            break;
+          }
+        }
+      }
+
+      if (!opusPayload) return sdp;
+
+      // Reorder m=audio line to put Opus first
+      const newLines = lines.map(line => {
+        if (line.startsWith('m=audio')) {
+          const parts = line.split(' ');
+          // parts[0]='m=audio', [1]=port, [2]=proto, [3..]=payload types
+          const payloads = parts.slice(3);
+          const reordered = [opusPayload, ...payloads.filter(p => p !== opusPayload)];
+          return [...parts.slice(0, 3), ...reordered].join(' ');
+        }
+        return line;
+      });
+
+      // Add Opus-specific parameters for high quality
+      let result = newLines.join('\r\n');
+
+      // Set Opus to max quality: stereo=0 (mono saves BW), maxaveragebitrate=64000
+      if (!result.includes(`a=fmtp:${opusPayload}`)) {
+        result = result.replace(
+          `a=rtpmap:${opusPayload} opus/48000/2`,
+          `a=rtpmap:${opusPayload} opus/48000/2\r\na=fmtp:${opusPayload} minptime=10;useinbandfec=1;maxaveragebitrate=64000`
+        );
+      } else {
+        // Append quality params to existing fmtp
+        result = result.replace(
+          new RegExp(`a=fmtp:${opusPayload}(.*)`),
+          `a=fmtp:${opusPayload}$1;maxaveragebitrate=64000;useinbandfec=1`
+        );
+      }
+
+      console.log(`[WebRTC] 🔊 Opus codec preferred (payload: ${opusPayload}, 64kbps)`);
+      return result;
+    } catch (error) {
+      console.warn('[WebRTC] Error preferring Opus:', error);
+      return sdp;
     }
   }
 
