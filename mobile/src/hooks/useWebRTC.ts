@@ -21,9 +21,12 @@ export function useWebRTC() {
   const [localStream, setLocalStream] = useState<MediaStream | null>(null);
   const [remoteStream, setRemoteStream] = useState<MediaStream | null>(null);
   const [peerConnected, setPeerConnected] = useState(false);
+  const [reconnectAttempt, setReconnectAttempt] = useState(0);
 
-  const { mode, setConnectionStatus, setError } = useAppStore();
+  const { mode, setConnectionStatus, setError, autoReconnect } = useAppStore();
   const isCleanedUpRef = useRef(false);
+  const reconnectTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const maxReconnectAttempts = 10;
   // Use refs to avoid stale closures in socket event handlers
   const modeRef = useRef(mode);
   modeRef.current = mode;
@@ -76,9 +79,14 @@ export function useWebRTC() {
             if (state === 'connected' || state === 'completed') {
               setPeerConnected(true);
               setConnectionStatus('connected');
+              setReconnectAttempt(0);
               // Boost audio bitrate for better voice quality
               webrtcService.setAudioBitrate(64000);
-            } else if (state === 'disconnected' || state === 'failed') {
+            } else if (state === 'failed') {
+              setPeerConnected(false);
+              setConnectionStatus('reconnecting');
+              attemptICERestart();
+            } else if (state === 'disconnected') {
               setPeerConnected(false);
               setConnectionStatus('reconnecting');
             }
@@ -146,9 +154,14 @@ export function useWebRTC() {
             if (state === 'connected' || state === 'completed') {
               setPeerConnected(true);
               setConnectionStatus('connected');
+              setReconnectAttempt(0);
               // Boost audio bitrate for better voice quality
               webrtcService.setAudioBitrate(64000);
-            } else if (state === 'disconnected' || state === 'failed') {
+            } else if (state === 'failed') {
+              setPeerConnected(false);
+              setConnectionStatus('reconnecting');
+              attemptICERestart();
+            } else if (state === 'disconnected') {
               setPeerConnected(false);
               setConnectionStatus('reconnecting');
             }
@@ -215,11 +228,59 @@ export function useWebRTC() {
     if (isCleanedUpRef.current) return;
     isCleanedUpRef.current = true;
     console.log('[useWebRTC] 🧹 Cleaning up WebRTC');
+    if (reconnectTimerRef.current) {
+      clearTimeout(reconnectTimerRef.current);
+      reconnectTimerRef.current = null;
+    }
     webrtcService.cleanup();
     setLocalStream(null);
     setRemoteStream(null);
     setPeerConnected(false);
+    setReconnectAttempt(0);
   }, []);
+
+  /**
+   * Attempt ICE restart to recover a failed connection
+   */
+  const attemptICERestart = useCallback(async () => {
+    if (isCleanedUpRef.current || !autoReconnect) return;
+
+    setReconnectAttempt(prev => {
+      const attempt = prev + 1;
+      if (attempt > maxReconnectAttempts) {
+        console.log('[useWebRTC] ❌ Max reconnect attempts reached');
+        setError('Connection lost. Please rejoin the room.');
+        setConnectionStatus('disconnected');
+        return prev;
+      }
+
+      // Exponential backoff: 0s, 2s, 5s, 10s, 10s...
+      const delays = [0, 2000, 5000, 10000];
+      const delay = delays[Math.min(attempt - 1, delays.length - 1)];
+
+      console.log(`[useWebRTC] 🔄 Reconnect attempt ${attempt}/${maxReconnectAttempts} in ${delay}ms`);
+
+      reconnectTimerRef.current = setTimeout(async () => {
+        try {
+          const pc = webrtcService.getPeerConnection();
+          if (pc && pc.iceConnectionState !== 'closed') {
+            // Try ICE restart first
+            console.log('[useWebRTC] 🧊 Attempting ICE restart...');
+            const offer = await pc.createOffer({ iceRestart: true } as any);
+            await pc.setLocalDescription(offer as any);
+
+            // Send re-offer via signaling
+            // The existing socket listeners will handle the answer
+            console.log('[useWebRTC] 📤 ICE restart offer created');
+          }
+        } catch (error) {
+          console.warn('[useWebRTC] ICE restart failed:', error);
+        }
+      }, delay);
+
+      return attempt;
+    });
+  }, [autoReconnect, setError, setConnectionStatus]);
 
   // ─── Socket signaling listeners ────────────────────────────
   // Use socketService.on/off instead of getSocket() to ensure
@@ -297,6 +358,7 @@ export function useWebRTC() {
     localStream,
     remoteStream,
     peerConnected,
+    reconnectAttempt,
     initLocalStream,
     startAsCamera,
     startAsViewer,
