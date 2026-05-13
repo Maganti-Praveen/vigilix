@@ -44,8 +44,8 @@ router.post('/register', async (req, res) => {
       token,
     });
   } catch (error) {
-    console.error('[Auth] Register error:', error.message);
-    res.status(500).json({ error: 'Registration failed' });
+    console.error('[Auth] Register error:', error.message, error.stack);
+    res.status(500).json({ error: 'Registration failed: ' + error.message });
   }
 });
 
@@ -84,8 +84,8 @@ router.post('/login', async (req, res) => {
       token,
     });
   } catch (error) {
-    console.error('[Auth] Login error:', error.message);
-    res.status(500).json({ error: 'Login failed' });
+    console.error('[Auth] Login error:', error.message, error.stack);
+    res.status(500).json({ error: 'Login failed: ' + error.message });
   }
 });
 
