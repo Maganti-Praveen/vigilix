@@ -1,5 +1,5 @@
 /**
- * Smart CCTV Signaling Server
+ * Vigilix Signaling Server
  *
  * Lightweight Node.js + Express + Socket.IO server
  * Handles:
@@ -21,6 +21,8 @@ const { initializeSocketHandlers } = require('./socket/handlers');
 // ─── Configuration ──────────────────────────────────────────────
 const PORT = process.env.PORT || 3001;
 const CORS_ORIGIN = process.env.CORS_ORIGIN || '*';
+const RENDER_EXTERNAL_URL = process.env.RENDER_EXTERNAL_URL || null;
+const SELF_URL = RENDER_EXTERNAL_URL || `http://localhost:${PORT}`;
 
 // ─── Express Setup ──────────────────────────────────────────────
 const path = require('path');
@@ -33,10 +35,16 @@ app.use('/api', apiRoutes);
 // Root route
 app.get('/', (req, res) => {
   res.json({
-    name: 'Smart CCTV Signaling Server',
+    name: 'Vigilix Signaling Server',
     version: '1.0.0',
     status: 'running',
+    uptime: Math.floor(process.uptime()),
   });
+});
+
+// ─── Server URL endpoint (mobile app uses this to verify) ───────
+app.get('/api/server-url', (req, res) => {
+  res.json({ url: SELF_URL });
 });
 
 // ─── HTTP + Socket.IO Server ────────────────────────────────────
@@ -60,12 +68,26 @@ initializeSocketHandlers(io);
 server.listen(PORT, () => {
   console.log('');
   console.log('╔════════════════════════════════════════════╗');
-  console.log('║   Smart CCTV Signaling Server              ║');
+  console.log('║   Vigilix Signaling Server                 ║');
   console.log(`║   Running on port ${PORT}                    ║`);
+  console.log(`║   URL: ${SELF_URL.padEnd(35)}║`);
   console.log('║   WebSocket: ready                         ║');
   console.log('║   REST API:  ready                         ║');
   console.log('╚════════════════════════════════════════════╝');
   console.log('');
+
+  // ─── Self-Ping Keep-Alive (prevents Render free tier sleep) ──
+  if (RENDER_EXTERNAL_URL) {
+    const PING_INTERVAL = 14 * 60 * 1000; // 14 minutes
+    setInterval(() => {
+      http.get(`${RENDER_EXTERNAL_URL}/api/health`, (res) => {
+        console.log(`[Keep-Alive] Ping OK — status: ${res.statusCode}`);
+      }).on('error', (err) => {
+        console.log(`[Keep-Alive] Ping failed: ${err.message}`);
+      });
+    }, PING_INTERVAL);
+    console.log('[Keep-Alive] Self-ping enabled (every 14 min)');
+  }
 });
 
 // ─── Graceful Shutdown ──────────────────────────────────────────
