@@ -26,12 +26,12 @@ const userSchema = new mongoose.Schema({
   timestamps: true,
 });
 
-// Hash password before save
-userSchema.pre('save', async function(next) {
-  if (!this.isModified('passwordHash')) return next();
-  this.passwordHash = await bcrypt.hash(this.passwordHash, 12);
-  next();
-});
+// Static method to create user with hashed password
+userSchema.statics.createUser = async function(email, password, name) {
+  const passwordHash = await bcrypt.hash(password, 12);
+  const user = new this({ email, passwordHash, name });
+  return user.save();
+};
 
 // Compare password method
 userSchema.methods.comparePassword = async function(password) {

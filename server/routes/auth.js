@@ -26,14 +26,12 @@ router.post('/register', async (req, res) => {
       return res.status(409).json({ error: 'Email already registered' });
     }
 
-    // Create user
-    const user = new User({
-      email: email.toLowerCase(),
-      passwordHash: password, // pre-save hook will hash it
-      name: name.trim(),
-    });
-
-    await user.save();
+    // Create user (static method handles password hashing)
+    const user = await User.createUser(
+      email.toLowerCase(),
+      password,
+      name.trim()
+    );
 
     // Generate token
     const token = generateToken(user._id);
