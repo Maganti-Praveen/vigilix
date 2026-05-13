@@ -1,12 +1,12 @@
 /**
  * HomeScreen — Vigilix Dashboard
- * Smart-home style dashboard with mode cards, quick actions, and status.
+ * Smart-home style dashboard with saved cameras, mode cards, quick actions, and status.
  */
 
-import React from 'react';
+import React, { useEffect, useCallback } from 'react';
 import {
   View, Text, StyleSheet, ScrollView, StatusBar,
-  TouchableOpacity, Animated, Image, Dimensions,
+  TouchableOpacity, Animated, Image, Dimensions, RefreshControl,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -15,6 +15,7 @@ import { spacing, radii, typography, shadows } from '../design/tokens';
 import { useStaggeredEntrance, useScalePress } from '../design/animations';
 import { VCard } from '../components/ui/VCard';
 import { VBadge } from '../components/ui/VBadge';
+import { useAuthStore, Device } from '../store/authStore';
 
 const { width } = Dimensions.get('window');
 
@@ -24,7 +25,27 @@ interface HomeScreenProps {
 
 export function HomeScreen({ onSelectMode }: HomeScreenProps) {
   const { theme, isDark } = useTheme();
-  const anims = useStaggeredEntrance(5, 100);
+  const anims = useStaggeredEntrance(6, 100);
+  const { user, devices, loadDevices, isAuthenticated } = useAuthStore();
+  const [refreshing, setRefreshing] = React.useState(false);
+
+  useEffect(() => {
+    if (isAuthenticated) {
+      loadDevices();
+    }
+  }, [isAuthenticated]);
+
+  const onRefresh = useCallback(async () => {
+    setRefreshing(true);
+    await loadDevices();
+    setRefreshing(false);
+  }, [loadDevices]);
+
+  const cameras = devices.filter(d => d.role === 'camera');
+  const viewers = devices.filter(d => d.role === 'viewer');
+  const onlineCameras = cameras.filter(d => d.isOnline);
+
+  const firstName = user?.name?.split(' ')[0] || 'User';
 
   return (
     <View style={[styles.container, { backgroundColor: theme.bg.primary }]}>
@@ -34,6 +55,9 @@ export function HomeScreen({ onSelectMode }: HomeScreenProps) {
         style={styles.scroll}
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
+        refreshControl={
+          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={theme.accent.primary} />
+        }
       >
         {/* ─── Header ─── */}
         <Animated.View
@@ -49,18 +73,44 @@ export function HomeScreen({ onSelectMode }: HomeScreenProps) {
               resizeMode="contain"
             />
             <View>
-              <Text style={[styles.greeting, { color: theme.text.secondary }]}>Welcome to</Text>
+              <Text style={[styles.greeting, { color: theme.text.secondary }]}>
+                {getGreeting()}, {firstName}
+              </Text>
               <Text style={[styles.brandName, { color: theme.text.primary }]}>Vigilix</Text>
             </View>
           </View>
-          <VBadge label="All Clear" variant="success" icon="✓" />
+          <VBadge
+            label={onlineCameras.length > 0 ? `${onlineCameras.length} Online` : 'All Clear'}
+            variant={onlineCameras.length > 0 ? 'success' : 'default'}
+            icon={onlineCameras.length > 0 ? '●' : '✓'}
+          />
         </Animated.View>
+
+        {/* ─── Saved Cameras ─── */}
+        {cameras.length > 0 && (
+          <Animated.View
+            style={[
+              { opacity: anims[1].opacity, transform: [{ translateY: anims[1].translateY }] },
+            ]}
+          >
+            <Text style={[styles.sectionTitle, { color: theme.text.secondary }]}>
+              My Cameras
+            </Text>
+            {cameras.map((camera) => (
+              <CameraCard
+                key={camera._id}
+                camera={camera}
+                onPress={() => onSelectMode('viewer')}
+              />
+            ))}
+          </Animated.View>
+        )}
 
         {/* ─── Mode Cards ─── */}
         <Animated.View
           style={[
             styles.cardsRow,
-            { opacity: anims[1].opacity, transform: [{ translateY: anims[1].translateY }] },
+            { opacity: anims[2].opacity, transform: [{ translateY: anims[2].translateY }] },
           ]}
         >
           <ModeCard
@@ -82,7 +132,7 @@ export function HomeScreen({ onSelectMode }: HomeScreenProps) {
         {/* ─── Quick Actions ─── */}
         <Animated.View
           style={[
-            { opacity: anims[2].opacity, transform: [{ translateY: anims[2].translateY }] },
+            { opacity: anims[3].opacity, transform: [{ translateY: anims[3].translateY }] },
           ]}
         >
           <Text style={[styles.sectionTitle, { color: theme.text.secondary }]}>
@@ -103,7 +153,7 @@ export function HomeScreen({ onSelectMode }: HomeScreenProps) {
         {/* ─── Status Overview ─── */}
         <Animated.View
           style={[
-            { opacity: anims[3].opacity, transform: [{ translateY: anims[3].translateY }] },
+            { opacity: anims[4].opacity, transform: [{ translateY: anims[4].translateY }] },
           ]}
         >
           <Text style={[styles.sectionTitle, { color: theme.text.secondary }]}>
@@ -111,10 +161,10 @@ export function HomeScreen({ onSelectMode }: HomeScreenProps) {
           </Text>
           <VCard>
             <View style={styles.statusGrid}>
-              <StatusRow label="Cameras Online" value="0" />
-              <StatusRow label="Active Viewers" value="0" />
+              <StatusRow label="Cameras Paired" value={String(cameras.length)} />
+              <StatusRow label="Cameras Online" value={String(onlineCameras.length)} accent={onlineCameras.length > 0} />
+              <StatusRow label="Viewers" value={String(viewers.length)} />
               <StatusRow label="Network" value="Ready" accent />
-              <StatusRow label="Quality" value="HD" />
             </View>
           </VCard>
         </Animated.View>
@@ -123,7 +173,7 @@ export function HomeScreen({ onSelectMode }: HomeScreenProps) {
         <Animated.View
           style={[
             styles.footer,
-            { opacity: anims[4].opacity, transform: [{ translateY: anims[4].translateY }] },
+            { opacity: anims[5].opacity, transform: [{ translateY: anims[5].translateY }] },
           ]}
         >
           <Text style={[styles.footerText, { color: theme.text.tertiary }]}>
@@ -132,6 +182,60 @@ export function HomeScreen({ onSelectMode }: HomeScreenProps) {
         </Animated.View>
       </ScrollView>
     </View>
+  );
+}
+
+// ─── Greeting helper ─────────────────────────────────────────────
+function getGreeting() {
+  const hour = new Date().getHours();
+  if (hour < 12) return 'Good morning';
+  if (hour < 17) return 'Good afternoon';
+  return 'Good evening';
+}
+
+// ─── Camera Card ─────────────────────────────────────────────────
+
+function CameraCard({ camera, onPress }: { camera: Device; onPress: () => void }) {
+  const { theme } = useTheme();
+  const { style: animStyle, pressProps } = useScalePress(0.97);
+
+  return (
+    <Animated.View style={[{ marginBottom: spacing['3'] }, animStyle]}>
+      <TouchableOpacity activeOpacity={0.85} onPress={onPress} {...pressProps}>
+        <View style={[styles.cameraCard, {
+          backgroundColor: theme.surface.card,
+          borderColor: camera.isOnline ? theme.accent.primary : theme.surface.cardBorder,
+          borderWidth: camera.isOnline ? 1.5 : 1,
+        }]}>
+          <View style={styles.cameraCardLeft}>
+            <View style={[styles.cameraIcon, {
+              backgroundColor: camera.isOnline ? 'rgba(34,197,94,0.15)' : 'rgba(156,163,175,0.15)',
+            }]}>
+              <Text style={{ fontSize: 22 }}>{camera.isOnline ? '📹' : '📷'}</Text>
+            </View>
+            <View>
+              <Text style={[styles.cameraName, { color: theme.text.primary }]}>
+                {camera.deviceName}
+              </Text>
+              <Text style={[styles.cameraStatus, {
+                color: camera.isOnline ? '#22C55E' : theme.text.tertiary,
+              }]}>
+                {camera.isOnline ? '● Online' : '○ Offline'}
+                {camera.roomCode ? `  ·  ${camera.roomCode}` : ''}
+              </Text>
+            </View>
+          </View>
+          <View style={styles.cameraCardRight}>
+            {camera.lastBatteryLevel != null && (
+              <Text style={[styles.cameraBattery, { color: theme.text.tertiary }]}>
+                🔋 {camera.lastBatteryLevel}%
+              </Text>
+            )}
+            <Text style={{ color: theme.text.tertiary, fontSize: 18 }}>›</Text>
+          </View>
+        </View>
+      </TouchableOpacity>
+    </Animated.View>
   );
 }
 
@@ -341,5 +445,46 @@ const styles = StyleSheet.create({
     fontSize: typography.size.xs,
     fontFamily: typography.fontFamily.regular,
     letterSpacing: typography.letterSpacing.wider,
+  },
+
+  // Camera Card
+  cameraCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    padding: spacing['4'],
+    borderRadius: radii.xl,
+    borderWidth: 1,
+  },
+  cameraCardLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing['3'],
+    flex: 1,
+  },
+  cameraIcon: {
+    width: 44,
+    height: 44,
+    borderRadius: radii.lg,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  cameraName: {
+    fontSize: typography.size.base,
+    fontFamily: typography.fontFamily.semibold,
+  },
+  cameraStatus: {
+    fontSize: typography.size.xs,
+    fontFamily: typography.fontFamily.medium,
+    marginTop: 2,
+  },
+  cameraCardRight: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing['2'],
+  },
+  cameraBattery: {
+    fontSize: typography.size.xs,
+    fontFamily: typography.fontFamily.medium,
   },
 });
