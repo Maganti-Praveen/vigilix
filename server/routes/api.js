@@ -28,4 +28,30 @@ router.get('/stats', (req, res) => {
   });
 });
 
+/**
+ * App version check endpoint — for in-app updates
+ * Mobile app calls this on launch to check if a new version is available.
+ */
+router.get('/version', (req, res) => {
+  res.json({
+    currentVersion: '1.1.0',
+    versionCode: 2,
+    minSupportedVersion: '1.0.0',
+    releaseDate: '2026-05-14',
+    downloadUrl: 'https://github.com/Maganti-Praveen/vigilix/releases/latest/download/Vigilix.apk',
+    changelog: [
+      'Account login & registration',
+      'Device pairing with saved cameras',
+      'Push-to-wake offline cameras (FCM)',
+      'Native background foreground service',
+      'Remote recording from viewer',
+      'Recordings gallery',
+      'Improved audio quality (Opus 64kbps)',
+      'Auto-reconnect with ICE restart',
+    ],
+    updateRequired: false,
+    updateAvailable: true,
+  });
+});
+
 module.exports = router;

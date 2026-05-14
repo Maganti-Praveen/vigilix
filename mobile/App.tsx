@@ -29,6 +29,7 @@ import RecordingsScreen from './src/screens/RecordingsScreen';
 import { BottomTabBar } from './src/components/navigation/BottomTabBar';
 import { useAppStore } from './src/store/appStore';
 import { useAuthStore } from './src/store/authStore';
+import updateService from './src/services/updateService';
 
 type Screen = 'splash' | 'welcome' | 'login' | 'register' | 'device-setup' | 'home' | 'camera' | 'viewer' | 'settings' | 'recordings';
 
@@ -42,6 +43,13 @@ function AppContent() {
   useEffect(() => {
     initialize();
   }, []);
+
+  // Check for updates once auth is ready and user is on home
+  useEffect(() => {
+    if (isInitialized && currentScreen === 'home') {
+      updateService.checkForUpdate();
+    }
+  }, [isInitialized, currentScreen]);
 
   const handleSplashFinish = useCallback(() => {
     if (isInitialized) {

@@ -481,3 +481,118 @@ Open `http://YOUR_IP:3001/viewer.html`
 2. Tap "Camera" → "Start Streaming" → room code appears
 3. On another device/browser: enter room code → stream connects
 4. Use floating controls for flash, mic, recording, talk-back
+
+---
+
+## 15. Version 1.1.0 — Production Upgrade (May 2026)
+
+Complete transformation from prototype to production-grade surveillance platform.
+
+### 15.1 Architecture Changes
+
+Server upgraded from local-only signaling to cloud-deployed full-stack:
+- **MongoDB Atlas** — persistent users, devices, recording metadata
+- **JWT Auth** — bcrypt password hashing, 7-day token expiry, expo-secure-store
+- **Firebase Admin SDK** — push notifications to wake offline cameras
+- **Render Cloud** — auto-deploy from GitHub, env vars for secrets
+
+### 15.2 Phase 1: MongoDB + Auth Backend
+
+| Component | File | Purpose |
+|-----------|------|---------|
+| User Model | `server/models/User.js` | name, email, bcrypt hash, device refs |
+| Device Model | `server/models/Device.js` | role, FCM token, battery, online status, room code |
+| Recording Model | `server/models/Recording.js` | camera ref, filename, path, size, duration |
+| Auth Middleware | `server/middleware/auth.js` | JWT verification for protected routes |
+| Auth Routes | `server/routes/auth.js` | POST /register, POST /login, GET /me |
+| Device Routes | `server/routes/devices.js` | CRUD + status + wake endpoint |
+| Recording Routes | `server/routes/recordings.js` | save, list, delete |
+
+### 15.3 Phase 2: Mobile Auth Flow
+
+- `WelcomeScreen` — landing with Login/Register buttons
+- `AuthScreen` — dual-mode form (login/register)
+- `authStore.ts` (Zustand) — user, token, isAuthenticated, devices
+- Token persistence via `expo-secure-store`
+- Auto-login: load token → verify `/me` → restore session
+
+### 15.4 Phase 3: Device Pairing & Saved Cameras
+
+- `DeviceSetupScreen` — "Camera or Viewer?" after first login
+- Auto-detects device model via `expo-device`
+- Registers device with server + FCM token
+- Saved cameras on HomeScreen with online/offline status
+- **Tap-to-connect**: tap camera card → auto-join its room (no code entry)
+
+### 15.5 Phase 4: Push-to-Wake (FCM)
+
+**Server** (`server/services/fcmService.js`):
+- Firebase Admin SDK from `FIREBASE_SERVICE_ACCOUNT` env var
+- `sendWakeNotification(fcmToken, roomCode)` — high-priority data message
+- 30s rate limit per device, token expiry handling
+
+**Mobile** (`mobile/src/services/fcmService.ts`):
+- Gets FCM token → saved to server during device registration
+- Handles foreground + background messages
+- Wake callback triggers app open + auto-stream
+
+**HomeScreen**: "📡 Wake" button on offline camera cards
+
+### 15.6 Phase 5: Native Background Service
+
+**Native Kotlin** (`android/.../StreamingForegroundService.kt`):
+- `PARTIAL_WAKE_LOCK` prevents CPU sleep (12h max)
+- `START_STICKY` — auto-restart if killed
+- Persistent notification with room code
+- `foregroundServiceType="camera|microphone"`
+
+**Bridge** (`StreamingServiceModule.kt`): exposes `start(roomCode)` / `stop()` to JS
+
+**Permissions**: `FOREGROUND_SERVICE_CAMERA`, `FOREGROUND_SERVICE_MICROPHONE`, `REQUEST_IGNORE_BATTERY_OPTIMIZATIONS`
+
+### 15.7 Phase 6: Remote Recording & Gallery
+
+- Viewer taps 🔴 Record → socket signals camera → captures frames
+- Recording metadata saved to MongoDB via REST API
+- `RecordingsScreen` — gallery with date groups, stats, delete
+- "Clips" tab added to BottomTabBar (5 tabs total)
+
+### 15.8 Phase 7: Audio Quality
+
+- Opus codec at 64kbps mono
+- `autoGainControl`, `noiseSuppression`, `echoCancellation`
+- Speaker volume boost on camera device
+
+### 15.9 Phase 8: Auto-Reconnect
+
+- ICE restart on `disconnected`/`failed` state
+- Exponential backoff: 2s→32s, max 10 attempts
+- Socket-level: 15 attempts, 1-5s backoff
+- Auto `reconnect-to-room` on socket reconnect
+
+### 15.10 In-App Update System
+
+Since app is not on Play Store, self-hosted updates:
+- Server `GET /api/version` returns current version + download URL
+- Mobile `updateService.ts` checks on home mount (throttled 6h)
+- Compares semver → shows Alert with changelog
+- "Download Update" opens browser to GitHub Releases APK
+- Manual check in Settings → "Check for Updates"
+
+### 15.11 New Files (v1.1)
+
+**Server**: `models/{User,Device,Recording}.js`, `middleware/auth.js`, `routes/{auth,devices,recordings}.js`, `services/fcmService.js`
+
+**Mobile Native**: `StreamingForegroundService.kt`, `StreamingServiceModule.kt`, `StreamingServicePackage.kt`
+
+**Mobile TS**: `DeviceSetupScreen.tsx`, `RecordingsScreen.tsx`, `fcmService.ts`, `updateService.ts`, `backgroundService.ts` (rewritten), `authStore.ts`
+
+**Total**: ~12,000 lines across 50+ source files.
+
+### 15.12 Version History
+
+| Version | Date | Key Features |
+|---------|------|-------------|
+| 1.0.0 | May 12, 2026 | WebRTC streaming, room codes, flash, bidir audio, web viewer, premium UI |
+| 1.1.0 | May 14, 2026 | Auth, device pairing, FCM wake, foreground service, recording, gallery, auto-reconnect, in-app updates |
+

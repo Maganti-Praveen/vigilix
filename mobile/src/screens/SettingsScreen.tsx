@@ -16,6 +16,7 @@ import { VIconButton } from '../components/ui/VIconButton';
 import { useFadeIn, useSlideUp } from '../design/animations';
 import { Animated } from 'react-native';
 import { useAuthStore } from '../store/authStore';
+import updateService, { APP_VERSION } from '../services/updateService';
 
 interface SettingsScreenProps {
   onBack: () => void;
@@ -122,10 +123,14 @@ export function SettingsScreen({ onBack, onLogout }: SettingsScreenProps) {
                 <View>
                   <Text style={[styles.aboutName, { color: theme.text.primary }]}>Vigilix</Text>
                   <Text style={[styles.aboutVersion, { color: theme.text.tertiary }]}>
-                    Version 1.0.0
+                    Version {APP_VERSION}
                   </Text>
                 </View>
               </View>
+              <Divider />
+              <TouchableOpacity onPress={() => updateService.checkForUpdate(true)}>
+                <SettingRow icon="🔄" label="Check for Updates" arrow />
+              </TouchableOpacity>
               <Divider />
               <SettingRow icon="📜" label="Privacy Policy" arrow />
               <Divider />
