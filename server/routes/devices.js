@@ -28,16 +28,29 @@ router.post('/register', async (req, res) => {
       return res.status(400).json({ error: 'Role must be "camera" or "viewer"' });
     }
 
-    // Create device
-    const device = new Device({
-      userId: req.userId,
-      deviceName: deviceName.trim(),
-      deviceModel: deviceModel || 'Unknown',
-      role,
-      fcmToken: fcmToken || null,
-    });
-
-    await device.save();
+    // Create device — retry up to 5 times for roomCode collision
+    let device;
+    let attempts = 0;
+    while (attempts < 5) {
+      try {
+        device = new Device({
+          userId: req.userId,
+          deviceName: deviceName.trim(),
+          deviceModel: deviceModel || 'Unknown',
+          role,
+          fcmToken: fcmToken || null,
+        });
+        await device.save();
+        break; // success
+      } catch (saveErr) {
+        if (saveErr.code === 11000 && attempts < 4) {
+          // Duplicate roomCode — retry
+          attempts++;
+          continue;
+        }
+        throw saveErr;
+      }
+    }
 
     // Add device to user's device list
     await User.findByIdAndUpdate(req.userId, {
@@ -51,8 +64,8 @@ router.post('/register', async (req, res) => {
       device: device.toObject(),
     });
   } catch (error) {
-    console.error('[Devices] Register error:', error.message);
-    res.status(500).json({ error: 'Failed to register device' });
+    console.error('[Devices] Register error:', error.message, error.stack);
+    res.status(500).json({ error: error.message || 'Failed to register device' });
   }
 });
 

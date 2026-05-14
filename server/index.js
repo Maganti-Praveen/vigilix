@@ -33,7 +33,16 @@ const MONGODB_URI = process.env.MONGODB_URI || null;
 // ─── MongoDB Connection ─────────────────────────────────────────
 if (MONGODB_URI) {
   mongoose.connect(MONGODB_URI)
-    .then(() => console.log('[MongoDB] ✅ Connected to database'))
+    .then(async () => {
+      console.log('[MongoDB] ✅ Connected to database');
+      // Drop stale unique index on roomCode (was causing registration failures)
+      try {
+        await mongoose.connection.collection('devices').dropIndex('roomCode_1');
+        console.log('[MongoDB] Dropped stale roomCode index');
+      } catch (e) {
+        // Index doesn't exist — that's fine
+      }
+    })
     .catch(err => console.error('[MongoDB] ❌ Connection failed:', err.message));
 } else {
   console.log('[MongoDB] ⚠️ No MONGODB_URI set — running in signaling-only mode (v1.0 compatible)');

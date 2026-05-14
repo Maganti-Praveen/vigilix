@@ -64,9 +64,10 @@ function AppContent() {
     }
   }, [isAuthenticated, isInitialized, devices]);
 
-  // When auth state changes after splash
+  // When auth state changes after splash — redirect to home/device-setup
   useEffect(() => {
-    if (isInitialized && currentScreen === 'welcome' && isAuthenticated) {
+    if (isInitialized && isAuthenticated &&
+        (currentScreen === 'welcome' || currentScreen === 'login' || currentScreen === 'register')) {
       setCurrentScreen(devices.length === 0 ? 'device-setup' : 'home');
     }
   }, [isAuthenticated, isInitialized, currentScreen, devices]);

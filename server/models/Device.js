@@ -24,8 +24,7 @@ const deviceSchema = new mongoose.Schema({
   // Persistent room code for camera devices
   roomCode: {
     type: String,
-    unique: true,
-    sparse: true, // allows null for viewers
+    default: null,
   },
   fcmToken: {
     type: String,
