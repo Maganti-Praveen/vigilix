@@ -51,11 +51,10 @@ const deviceSchema = new mongoose.Schema({
 });
 
 // Auto-generate persistent room code for camera devices
-deviceSchema.pre('save', function(next) {
+deviceSchema.pre('save', function() {
   if (this.role === 'camera' && !this.roomCode) {
     this.roomCode = generateRoomCode();
   }
-  next();
 });
 
 module.exports = mongoose.model('Device', deviceSchema);

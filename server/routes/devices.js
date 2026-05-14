@@ -28,6 +28,7 @@ router.use(authenticateToken);
 router.post('/register', async (req, res) => {
   try {
     const { deviceName, deviceModel, role, fcmToken } = req.body;
+    console.log(`[Devices] Register request: ${deviceName} (${role}) user=${req.userId}`);
 
     if (!deviceName || !role) {
       return res.status(400).json({ error: 'deviceName and role are required' });
@@ -37,43 +38,31 @@ router.post('/register', async (req, res) => {
       return res.status(400).json({ error: 'Role must be "camera" or "viewer"' });
     }
 
-    // Create device — retry up to 5 times for roomCode collision
-    let device;
-    let attempts = 0;
-    while (attempts < 5) {
-      try {
-        device = new Device({
-          userId: req.userId,
-          deviceName: deviceName.trim(),
-          deviceModel: deviceModel || 'Unknown',
-          role,
-          fcmToken: fcmToken || null,
-        });
-        await device.save();
-        break; // success
-      } catch (saveErr) {
-        if (saveErr.code === 11000 && attempts < 4) {
-          // Duplicate roomCode — retry
-          attempts++;
-          continue;
-        }
-        throw saveErr;
-      }
-    }
+    // Create device
+    const device = new Device({
+      userId: req.userId,
+      deviceName: deviceName.trim(),
+      deviceModel: deviceModel || 'Unknown',
+      role,
+      fcmToken: fcmToken || null,
+    });
+
+    await device.save();
 
     // Add device to user's device list
     await User.findByIdAndUpdate(req.userId, {
       $push: { devices: device._id },
     });
 
-    console.log(`[Devices] Registered: ${deviceName} (${role}) for user ${req.userId}`);
+    console.log(`[Devices] ✅ Registered: ${deviceName} (${role}) id=${device._id}`);
 
     res.status(201).json({
       success: true,
       device: device.toObject(),
     });
   } catch (error) {
-    console.error('[Devices] Register error:', error.message, error.stack);
+    console.error('[Devices] ❌ Register error:', error.message);
+    console.error('[Devices] Stack:', error.stack);
     res.status(500).json({ error: error.message || 'Failed to register device' });
   }
 });
@@ -92,6 +81,7 @@ router.get('/', async (req, res) => {
       devices: devices.map(d => d.toObject()),
     });
   } catch (error) {
+    console.error('[Devices] List error:', error.message);
     res.status(500).json({ error: 'Failed to list devices' });
   }
 });
