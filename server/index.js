@@ -110,11 +110,9 @@ server.listen(PORT, () => {
   if (RENDER_EXTERNAL_URL) {
     const PING_INTERVAL = 14 * 60 * 1000; // 14 minutes
     setInterval(() => {
-      http.get(`${RENDER_EXTERNAL_URL}/api/health`, (res) => {
-        console.log(`[Keep-Alive] Ping OK — status: ${res.statusCode}`);
-      }).on('error', (err) => {
-        console.log(`[Keep-Alive] Ping failed: ${err.message}`);
-      });
+      fetch(`${RENDER_EXTERNAL_URL}/api/health`)
+        .then(res => console.log(`[Keep-Alive] Ping OK — status: ${res.status}`))
+        .catch(err => console.log(`[Keep-Alive] Ping failed: ${err.message}`));
     }, PING_INTERVAL);
     console.log('[Keep-Alive] Self-ping enabled (every 14 min)');
   }
