@@ -67,6 +67,29 @@ export function ViewerScreen({ onBack }: ViewerScreenProps) {
   useEffect(() => {
     setMode('viewer');
     connect();
+
+    // If roomCode is pre-set (from tapping saved camera), auto-join
+    const presetCode = useAppStore.getState().roomCode;
+    if (presetCode) {
+      setInputCode(presetCode);
+      // Delay to ensure socket is connected
+      setTimeout(async () => {
+        setIsJoining(true);
+        try {
+          const result = await joinRoom(presetCode);
+          if (result.success) {
+            setIsConnected(true);
+          } else {
+            setError(result.error || 'Failed to join room');
+          }
+        } catch (err: any) {
+          setError(err.message);
+        } finally {
+          setIsJoining(false);
+        }
+      }, 1500);
+    }
+
     return () => {
       deactivateKeepAwake('viewer');
       cleanupWebRTC(); leaveRoom(); disconnect();

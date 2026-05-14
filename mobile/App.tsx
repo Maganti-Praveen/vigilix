@@ -24,17 +24,19 @@ import {
   WelcomeScreen,
   AuthScreen,
 } from './src/screens';
+import DeviceSetupScreen from './src/screens/DeviceSetupScreen';
+import RecordingsScreen from './src/screens/RecordingsScreen';
 import { BottomTabBar } from './src/components/navigation/BottomTabBar';
 import { useAppStore } from './src/store/appStore';
 import { useAuthStore } from './src/store/authStore';
 
-type Screen = 'splash' | 'welcome' | 'login' | 'register' | 'home' | 'camera' | 'viewer' | 'settings';
+type Screen = 'splash' | 'welcome' | 'login' | 'register' | 'device-setup' | 'home' | 'camera' | 'viewer' | 'settings' | 'recordings';
 
 function AppContent() {
   const [currentScreen, setCurrentScreen] = useState<Screen>('splash');
   const { setMode, resetState } = useAppStore();
   const { theme } = useTheme();
-  const { isAuthenticated, isInitialized, initialize } = useAuthStore();
+  const { isAuthenticated, isInitialized, initialize, devices } = useAuthStore();
 
   // Initialize auth on mount
   useEffect(() => {
@@ -43,23 +45,35 @@ function AppContent() {
 
   const handleSplashFinish = useCallback(() => {
     if (isInitialized) {
-      setCurrentScreen(isAuthenticated ? 'home' : 'welcome');
+      if (isAuthenticated) {
+        // Check if user has set up a device yet
+        setCurrentScreen(devices.length === 0 ? 'device-setup' : 'home');
+      } else {
+        setCurrentScreen('welcome');
+      }
     } else {
-      // Auth still loading — show welcome for now, will redirect after init
       setCurrentScreen('welcome');
     }
-  }, [isAuthenticated, isInitialized]);
+  }, [isAuthenticated, isInitialized, devices]);
 
   // When auth state changes after splash
   useEffect(() => {
     if (isInitialized && currentScreen === 'welcome' && isAuthenticated) {
-      setCurrentScreen('home');
+      setCurrentScreen(devices.length === 0 ? 'device-setup' : 'home');
     }
-  }, [isAuthenticated, isInitialized, currentScreen]);
+  }, [isAuthenticated, isInitialized, currentScreen, devices]);
 
   const handleSelectMode = useCallback((mode: 'camera' | 'viewer') => {
     setMode(mode);
     setCurrentScreen(mode);
+  }, [setMode]);
+
+  // Auto-connect to a saved camera's room
+  const handleConnectCamera = useCallback((roomCode: string) => {
+    setMode('viewer');
+    // Store the room code so ViewerScreen can auto-join
+    useAppStore.getState().setRoomCode(roomCode);
+    setCurrentScreen('viewer');
   }, [setMode]);
 
   const handleBack = useCallback(() => {
@@ -77,6 +91,8 @@ function AppContent() {
     } else if (key === 'viewer') {
       setMode('viewer');
       setCurrentScreen('viewer');
+    } else if (key === 'recordings') {
+      setCurrentScreen('recordings');
     } else if (key === 'settings') {
       setCurrentScreen('settings');
     }
@@ -94,6 +110,7 @@ function AppContent() {
     currentScreen !== 'welcome' &&
     currentScreen !== 'login' &&
     currentScreen !== 'register' &&
+    currentScreen !== 'device-setup' &&
     currentScreen !== 'camera' &&
     currentScreen !== 'viewer';
 
@@ -136,9 +153,19 @@ function AppContent() {
           />
         )}
 
-        {currentScreen === 'home' && <HomeScreen onSelectMode={handleSelectMode} />}
+        {currentScreen === 'device-setup' && (
+          <DeviceSetupScreen onComplete={() => setCurrentScreen('home')} />
+        )}
+
+        {currentScreen === 'home' && (
+          <HomeScreen
+            onSelectMode={handleSelectMode}
+            onConnectCamera={handleConnectCamera}
+          />
+        )}
         {currentScreen === 'camera' && <CameraScreen onBack={handleBack} />}
         {currentScreen === 'viewer' && <ViewerScreen onBack={handleBack} />}
+        {currentScreen === 'recordings' && <RecordingsScreen onBack={handleBack} />}
         {currentScreen === 'settings' && <SettingsScreen onBack={handleBack} onLogout={handleLogout} />}
       </View>
 

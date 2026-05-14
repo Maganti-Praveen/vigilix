@@ -22,6 +22,7 @@ const TABS: Tab[] = [
   { key: 'home', label: 'Home', icon: '🏠', activeIcon: '🏠' },
   { key: 'camera', label: 'Camera', icon: '📷', activeIcon: '📷' },
   { key: 'viewer', label: 'Viewer', icon: '👁️', activeIcon: '👁️' },
+  { key: 'recordings', label: 'Clips', icon: '🎬', activeIcon: '🎬' },
   { key: 'settings', label: 'Settings', icon: '⚙️', activeIcon: '⚙️' },
 ];
 

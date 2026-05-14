@@ -1,14 +1,16 @@
 /**
  * Background Service
- * Manages foreground notification and keep-alive for camera streaming
+ * Manages native foreground service + notification for camera streaming
  * when the app is backgrounded or screen is off.
  *
- * Uses expo-notifications to show a persistent notification
- * and AppState to track foreground/background transitions.
+ * On Android: Uses native StreamingForegroundService (Kotlin) with PARTIAL_WAKE_LOCK
+ * Fallback: Uses expo-notifications for persistent notification
  */
 
-import { AppState, AppStateStatus, Platform } from 'react-native';
+import { AppState, AppStateStatus, NativeModules, Platform } from 'react-native';
 import * as Notifications from 'expo-notifications';
+
+const { StreamingService } = NativeModules;
 
 // Configure notifications to show when app is in foreground
 Notifications.setNotificationHandler({
@@ -24,7 +26,6 @@ Notifications.setNotificationHandler({
 class BackgroundService {
   private isRunning = false;
   private appStateSubscription: any = null;
-  private notificationId: string | null = null;
   private onBackgroundCallback: (() => void) | null = null;
   private onForegroundCallback: (() => void) | null = null;
   private startTime: Date | null = null;
@@ -46,25 +47,25 @@ class BackgroundService {
     this.onBackgroundCallback = options?.onBackground || null;
     this.onForegroundCallback = options?.onForeground || null;
 
-    // Request notification permission
-    const { status } = await Notifications.requestPermissionsAsync();
-    if (status !== 'granted') {
-      console.warn('[BackgroundService] Notification permission not granted');
+    // Start native foreground service (Android)
+    if (Platform.OS === 'android' && StreamingService) {
+      try {
+        await StreamingService.start(options?.roomCode || '');
+        console.log('[BackgroundService] ✅ Native foreground service started');
+      } catch (error) {
+        console.warn('[BackgroundService] Native service failed, using fallback:', error);
+        await this.showFallbackNotification(options?.roomCode);
+      }
+    } else {
+      // iOS or native module not available — use expo-notifications
+      await this.showFallbackNotification(options?.roomCode);
     }
-
-    // Show persistent notification
-    await this.showStreamingNotification(options?.roomCode);
 
     // Listen for app state changes
     this.appStateSubscription = AppState.addEventListener(
       'change',
       this.handleAppStateChange.bind(this)
     );
-
-    // Update notification every 30 seconds with duration
-    this.updateInterval = setInterval(() => {
-      this.updateNotification(options?.roomCode);
-    }, 30000);
 
     console.log('[BackgroundService] ✅ Started');
   }
@@ -78,13 +79,16 @@ class BackgroundService {
     this.isRunning = false;
     this.startTime = null;
 
-    // Remove notification
-    if (this.notificationId) {
-      await Notifications.dismissNotificationAsync(this.notificationId);
-      this.notificationId = null;
+    // Stop native foreground service
+    if (Platform.OS === 'android' && StreamingService) {
+      try {
+        await StreamingService.stop();
+      } catch (error) {
+        console.warn('[BackgroundService] Stop native service error:', error);
+      }
     }
 
-    // Remove all our notifications
+    // Remove any expo notifications
     await Notifications.dismissAllNotificationsAsync();
 
     // Remove app state listener
@@ -112,22 +116,22 @@ class BackgroundService {
     console.log(`[BackgroundService] App state: ${nextAppState}`);
 
     if (nextAppState === 'background' || nextAppState === 'inactive') {
-      // App going to background — streaming continues via WebRTC
       console.log('[BackgroundService] 📱 App backgrounded — stream continues');
       this.onBackgroundCallback?.();
     } else if (nextAppState === 'active') {
-      // App returning to foreground
       console.log('[BackgroundService] 📱 App foregrounded');
       this.onForegroundCallback?.();
     }
   }
 
   /**
-   * Show persistent streaming notification
+   * Fallback: show expo-notifications based persistent notification
    */
-  private async showStreamingNotification(roomCode?: string): Promise<void> {
+  private async showFallbackNotification(roomCode?: string): Promise<void> {
     try {
-      // Set up the notification channel for Android
+      const { status } = await Notifications.requestPermissionsAsync();
+      if (status !== 'granted') return;
+
       if (Platform.OS === 'android') {
         await Notifications.setNotificationChannelAsync('streaming', {
           name: 'Camera Streaming',
@@ -138,60 +142,32 @@ class BackgroundService {
         });
       }
 
-      this.notificationId = await Notifications.scheduleNotificationAsync({
+      await Notifications.scheduleNotificationAsync({
         content: {
           title: '📹 Vigilix Camera Active',
-          body: roomCode
-            ? `Streaming · Room: ${roomCode}`
-            : 'Camera is streaming...',
-          sticky: true,
-          priority: Notifications.AndroidNotificationPriority.LOW,
-          ...(Platform.OS === 'android' && { channelId: 'streaming' }),
-        },
-        trigger: null, // show immediately
-      });
-
-      console.log('[BackgroundService] 📋 Notification shown');
-    } catch (error) {
-      console.warn('[BackgroundService] Notification error:', error);
-    }
-  }
-
-  /**
-   * Update notification with streaming duration
-   */
-  private async updateNotification(roomCode?: string): Promise<void> {
-    if (!this.isRunning || !this.startTime) return;
-
-    const duration = this.getStreamingDuration();
-
-    try {
-      // Dismiss old and show new (expo-notifications doesn't support update)
-      if (this.notificationId) {
-        await Notifications.dismissNotificationAsync(this.notificationId);
-      }
-
-      this.notificationId = await Notifications.scheduleNotificationAsync({
-        content: {
-          title: '📹 Vigilix Camera Active',
-          body: roomCode
-            ? `Streaming ${duration} · Room: ${roomCode}`
-            : `Streaming ${duration}`,
+          body: roomCode ? `Streaming · Room: ${roomCode}` : 'Camera is streaming...',
           sticky: true,
           priority: Notifications.AndroidNotificationPriority.LOW,
           ...(Platform.OS === 'android' && { channelId: 'streaming' }),
         },
         trigger: null,
       });
-    } catch {
-      // Ignore update errors
+    } catch (error) {
+      console.warn('[BackgroundService] Fallback notification error:', error);
     }
   }
 
   /**
-   * Get formatted streaming duration
+   * Check if background service is currently running
    */
-  private getStreamingDuration(): string {
+  getIsRunning(): boolean {
+    return this.isRunning;
+  }
+
+  /**
+   * Get streaming duration string
+   */
+  getStreamingDuration(): string {
     if (!this.startTime) return '';
     const diff = Math.floor((Date.now() - this.startTime.getTime()) / 1000);
     const hours = Math.floor(diff / 3600);
@@ -200,13 +176,6 @@ class BackgroundService {
     if (hours > 0) return `${hours}h ${mins}m`;
     if (mins > 0) return `${mins}m ${secs}s`;
     return `${secs}s`;
-  }
-
-  /**
-   * Check if background service is currently running
-   */
-  getIsRunning(): boolean {
-    return this.isRunning;
   }
 }
 

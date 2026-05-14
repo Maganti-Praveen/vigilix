@@ -40,3 +40,5 @@ npm-debug.log*
 
 # Gemini
 .gemini/
+vigilix6-firebase-adminsdk-fbsvc-ba23ee9b7f.json
+google-services.json

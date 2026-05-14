@@ -21,9 +21,10 @@ const { width } = Dimensions.get('window');
 
 interface HomeScreenProps {
   onSelectMode: (mode: 'camera' | 'viewer') => void;
+  onConnectCamera?: (roomCode: string) => void;
 }
 
-export function HomeScreen({ onSelectMode }: HomeScreenProps) {
+export function HomeScreen({ onSelectMode, onConnectCamera }: HomeScreenProps) {
   const { theme, isDark } = useTheme();
   const anims = useStaggeredEntrance(6, 100);
   const { user, devices, loadDevices, isAuthenticated } = useAuthStore();
@@ -100,7 +101,13 @@ export function HomeScreen({ onSelectMode }: HomeScreenProps) {
               <CameraCard
                 key={camera._id}
                 camera={camera}
-                onPress={() => onSelectMode('viewer')}
+                onPress={() => {
+                  if (camera.roomCode && onConnectCamera) {
+                    onConnectCamera(camera.roomCode);
+                  } else {
+                    onSelectMode('viewer');
+                  }
+                }}
               />
             ))}
           </Animated.View>
