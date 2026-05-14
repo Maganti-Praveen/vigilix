@@ -3,7 +3,16 @@ const router = express.Router();
 const Device = require('../models/Device');
 const User = require('../models/User');
 const { authenticateToken } = require('../middleware/auth');
-const { sendWakeNotification } = require('../services/fcmService');
+
+// Safe import — firebase-admin may fail to load on some environments
+let sendWakeNotification;
+try {
+  const fcm = require('../services/fcmService');
+  sendWakeNotification = fcm.sendWakeNotification;
+} catch (err) {
+  console.warn('[Devices] FCM service unavailable:', err.message);
+  sendWakeNotification = async () => ({ success: false, error: 'FCM not available' });
+}
 
 // Rate limit: track last wake time per device
 const wakeRateLimit = new Map();
