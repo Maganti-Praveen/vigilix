@@ -41,13 +41,14 @@ export function ViewerScreen({ onBack }: ViewerScreenProps) {
     setIsMuted, setIsTalkingBack, setMode, setError,
   } = useAppStore();
 
-  const { connect, joinRoom, leaveRoom, disconnect, toggleFlash } = useSocket();
+  const { connect, joinRoom, leaveRoom, disconnect, toggleFlash, startRecording, stopRecording } = useSocket();
   const { remoteStream, peerConnected, toggleAudio, cleanup: cleanupWebRTC } = useWebRTC();
 
   const [inputCode, setInputCode] = useState('');
   const [isJoining, setIsJoining] = useState(false);
   const [isConnected, setIsConnected] = useState(false);
   const [flashOn, setFlashOn] = useState(false);
+  const [isRecordingRemote, setIsRecordingRemote] = useState(false);
 
   // Animations
   const formAnim = useSlideUp(100, 30);
@@ -124,6 +125,17 @@ export function ViewerScreen({ onBack }: ViewerScreenProps) {
       setFlashOn(ns);
     }
   }, [roomCode, flashOn, toggleFlash]);
+
+  const handleToggleRecording = useCallback(() => {
+    if (!roomCode) return;
+    if (isRecordingRemote) {
+      stopRecording(roomCode);
+      setIsRecordingRemote(false);
+    } else {
+      startRecording(roomCode);
+      setIsRecordingRemote(true);
+    }
+  }, [roomCode, isRecordingRemote, startRecording, stopRecording]);
 
   const handleBack = useCallback(() => {
     if (isConnected) {
@@ -284,6 +296,14 @@ export function ViewerScreen({ onBack }: ViewerScreenProps) {
               icon="📸"
               label="Snap"
               onPress={() => Alert.alert('Snapshot', 'Coming soon')}
+              glass
+            />
+            <VIconButton
+              icon={isRecordingRemote ? '⏺️' : '🔴'}
+              label={isRecordingRemote ? 'Stop' : 'Record'}
+              onPress={handleToggleRecording}
+              active={isRecordingRemote}
+              danger={isRecordingRemote}
               glass
             />
             <VIconButton

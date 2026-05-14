@@ -23,6 +23,8 @@ import { VBadge } from '../components/ui/VBadge';
 import { VGlass } from '../components/ui/VGlass';
 import { VButton } from '../components/ui/VButton';
 import * as Clipboard from 'expo-clipboard';
+import backgroundService from '../services/backgroundService';
+import recordingService from '../services/recordingService';
 
 const { width: SCREEN_W, height: SCREEN_H } = Dimensions.get('window');
 
@@ -42,7 +44,7 @@ export function CameraScreen({ onBack }: CameraScreenProps) {
 
   const {
     connect, createRoom, startStream, stopStream, leaveRoom, disconnect,
-    sendBatteryStatus, setOnFlashCommand,
+    sendBatteryStatus, setOnFlashCommand, setOnRecordingCommand,
   } = useSocket();
   const {
     localStream, remoteStream, peerConnected,
@@ -100,11 +102,22 @@ export function CameraScreen({ onBack }: CameraScreenProps) {
     hasInitialized.current = true;
     setMode('camera');
     setOnFlashCommand((enabled: boolean) => { setTorch(enabled); });
+    // Remote recording control from viewer
+    setOnRecordingCommand((action: 'start' | 'stop') => {
+      if (action === 'start') {
+        recordingService.start();
+        setIsRecording(true);
+      } else {
+        recordingService.stop();
+        setIsRecording(false);
+      }
+    });
     connect();
     return () => {
       if (recordingTimerRef.current) clearInterval(recordingTimerRef.current);
       if (batteryIntervalRef.current) clearInterval(batteryIntervalRef.current);
       deactivateKeepAwake('camera');
+      backgroundService.stop();
       cleanupWebRTC();
       leaveRoom();
       disconnect();
@@ -138,6 +151,12 @@ export function CameraScreen({ onBack }: CameraScreenProps) {
       const result = await createRoom();
       if (result.success) {
         startStream();
+        // Start background service with persistent notification
+        backgroundService.start({
+          roomCode: result.roomCode,
+          onBackground: () => console.log('[Camera] Running in background'),
+          onForeground: () => console.log('[Camera] Returned to foreground'),
+        });
       } else {
         setError(result.error || 'Failed to create room');
         Alert.alert('Error', result.error || 'Failed to create room');
@@ -158,6 +177,7 @@ export function CameraScreen({ onBack }: CameraScreenProps) {
       setRecordingDuration(0);
     }
     if (isFlashOn) { setTorch(false); setFlashOn(false); }
+    backgroundService.stop();
     stopStream(); leaveRoom(); cleanupWebRTC();
     setStreamURL(null); setTorchAvailable(false); setError(null);
   }, [stopStream, leaveRoom, cleanupWebRTC, isRecording, isFlashOn]);

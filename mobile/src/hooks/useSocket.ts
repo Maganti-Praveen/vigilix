@@ -14,6 +14,7 @@ import type { CreateRoomResponse, JoinRoomResponse } from '../types';
 export function useSocket() {
   const isConnectedRef = useRef(false);
   const onFlashCommandRef = useRef<((enabled: boolean) => void) | null>(null);
+  const onRecordingCommandRef = useRef<((action: 'start' | 'stop') => void) | null>(null);
   const {
     setConnectionStatus,
     setRoomCode,
@@ -114,6 +115,14 @@ export function useSocket() {
 
     socket.on(SOCKET_EVENTS.QUALITY_UPDATE, ({ quality }: any) => {
       setStreamQuality(quality);
+    });
+
+    // Recording command (camera receives from viewer)
+    socket.on(SOCKET_EVENTS.RECORDING_COMMAND, ({ action }: any) => {
+      console.log('[useSocket] 🎬 Recording command received:', action);
+      if (onRecordingCommandRef.current) {
+        onRecordingCommandRef.current(action);
+      }
     });
   }, []);
 
@@ -235,6 +244,22 @@ export function useSocket() {
     onFlashCommandRef.current = cb;
   }, []);
 
+  // Register recording command callback (camera mode)
+  const setOnRecordingCommand = useCallback((cb: (action: 'start' | 'stop') => void) => {
+    onRecordingCommandRef.current = cb;
+  }, []);
+
+  // Remote recording control (viewer sends to camera)
+  const startRecording = useCallback((roomCode: string) => {
+    console.log('[useSocket] 🔴 Emitting start-recording, room:', roomCode);
+    socketService.emit(SOCKET_EVENTS.START_RECORDING, { roomCode });
+  }, []);
+
+  const stopRecording = useCallback((roomCode: string) => {
+    console.log('[useSocket] ⏹️ Emitting stop-recording, room:', roomCode);
+    socketService.emit(SOCKET_EVENTS.STOP_RECORDING, { roomCode });
+  }, []);
+
   return {
     connect,
     disconnect,
@@ -247,6 +272,9 @@ export function useSocket() {
     toggleMic,
     sendBatteryStatus,
     setOnFlashCommand,
+    setOnRecordingCommand,
+    startRecording,
+    stopRecording,
     isConnected: socketService.isConnected(),
   };
 }
