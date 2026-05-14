@@ -5,7 +5,7 @@
 
 import React, { useEffect, useCallback } from 'react';
 import {
-  View, Text, StyleSheet, ScrollView, StatusBar,
+  View, Text, StyleSheet, ScrollView, StatusBar, Alert,
   TouchableOpacity, Animated, Image, Dimensions, RefreshControl,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -205,6 +205,20 @@ function getGreeting() {
 function CameraCard({ camera, onPress }: { camera: Device; onPress: () => void }) {
   const { theme } = useTheme();
   const { style: animStyle, pressProps } = useScalePress(0.97);
+  const [waking, setWaking] = React.useState(false);
+
+  const handleWake = async () => {
+    setWaking(true);
+    try {
+      const apiService = require('../services/apiService').default;
+      await apiService.wakeDevice(camera._id);
+      Alert.alert('📡 Wake Signal Sent', 'The camera should come online shortly.');
+    } catch (error: any) {
+      Alert.alert('Wake Failed', error.message || 'Could not send wake signal');
+    } finally {
+      setWaking(false);
+    }
+  };
 
   return (
     <Animated.View style={[{ marginBottom: spacing['3'] }, animStyle]}>
@@ -233,6 +247,17 @@ function CameraCard({ camera, onPress }: { camera: Device; onPress: () => void }
             </View>
           </View>
           <View style={styles.cameraCardRight}>
+            {!camera.isOnline && (
+              <TouchableOpacity
+                onPress={(e) => { e.stopPropagation?.(); handleWake(); }}
+                style={[styles.wakeButton, { backgroundColor: theme.accent.primaryMuted }]}
+                disabled={waking}
+              >
+                <Text style={[styles.wakeButtonText, { color: theme.accent.primary }]}>
+                  {waking ? '...' : '📡 Wake'}
+                </Text>
+              </TouchableOpacity>
+            )}
             {camera.lastBatteryLevel != null && (
               <Text style={[styles.cameraBattery, { color: theme.text.tertiary }]}>
                 🔋 {camera.lastBatteryLevel}%
@@ -493,5 +518,14 @@ const styles = StyleSheet.create({
   cameraBattery: {
     fontSize: typography.size.xs,
     fontFamily: typography.fontFamily.medium,
+  },
+  wakeButton: {
+    paddingHorizontal: spacing['3'],
+    paddingVertical: spacing['1.5'],
+    borderRadius: radii.lg,
+  },
+  wakeButtonText: {
+    fontSize: typography.size.xs,
+    fontFamily: typography.fontFamily.semibold,
   },
 });

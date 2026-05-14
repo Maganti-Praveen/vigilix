@@ -48,7 +48,7 @@ interface AuthState {
   register: (name: string, email: string, password: string) => Promise<boolean>;
   login: (email: string, password: string) => Promise<boolean>;
   logout: () => Promise<void>;
-  registerDevice: (deviceName: string, deviceModel: string, role: 'camera' | 'viewer') => Promise<Device | null>;
+  registerDevice: (deviceName: string, deviceModel: string, role: 'camera' | 'viewer', fcmToken?: string) => Promise<Device | null>;
   loadDevices: () => Promise<void>;
   setCurrentDevice: (device: Device | null) => void;
   clearError: () => void;
@@ -194,11 +194,11 @@ export const useAuthStore = create<AuthState>((set, get) => ({
   /**
    * Register current phone as a device
    */
-  registerDevice: async (deviceName, deviceModel, role) => {
+  registerDevice: async (deviceName, deviceModel, role, fcmToken) => {
     try {
       set({ isLoading: true, error: null });
 
-      const response = await apiService.registerDevice(deviceName, deviceModel, role);
+      const response = await apiService.registerDevice(deviceName, deviceModel, role, fcmToken);
 
       const device = response.device;
       set((state) => ({

@@ -4,7 +4,7 @@
  * Shows after first login when no devices are registered.
  */
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View, Text, StyleSheet, StatusBar, Alert,
   TouchableOpacity, ActivityIndicator, Platform,
@@ -12,6 +12,7 @@ import {
 import { LinearGradient } from 'expo-linear-gradient';
 import * as Device from 'expo-device';
 import { useAuthStore } from '../store/authStore';
+import fcmService from '../services/fcmService';
 
 interface DeviceSetupScreenProps {
   onComplete: () => void;
@@ -21,9 +22,17 @@ export default function DeviceSetupScreen({ onComplete }: DeviceSetupScreenProps
   const { registerDevice } = useAuthStore();
   const [isRegistering, setIsRegistering] = useState(false);
   const [selectedRole, setSelectedRole] = useState<'camera' | 'viewer' | null>(null);
+  const [fcmToken, setFcmToken] = useState<string | null>(null);
 
   const deviceModel = Device.modelName || Device.deviceName || 'Android Device';
   const deviceName = `${deviceModel}`;
+
+  // Initialize FCM on mount to get push token
+  useEffect(() => {
+    fcmService.initialize().then(token => {
+      if (token) setFcmToken(token);
+    }).catch(() => {});
+  }, []);
 
   const handleSelectRole = async (role: 'camera' | 'viewer') => {
     setSelectedRole(role);
@@ -34,7 +43,7 @@ export default function DeviceSetupScreen({ onComplete }: DeviceSetupScreenProps
         ? `${deviceName} Camera`
         : `${deviceName} Viewer`;
 
-      const device = await registerDevice(name, deviceModel, role);
+      const device = await registerDevice(name, deviceModel, role, fcmToken || undefined);
 
       if (device) {
         onComplete();

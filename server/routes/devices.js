@@ -3,6 +3,11 @@ const router = express.Router();
 const Device = require('../models/Device');
 const User = require('../models/User');
 const { authenticateToken } = require('../middleware/auth');
+const { sendWakeNotification } = require('../services/fcmService');
+
+// Rate limit: track last wake time per device
+const wakeRateLimit = new Map();
+const WAKE_COOLDOWN_MS = 30 * 1000; // 30 seconds
 
 // All device routes require authentication
 router.use(authenticateToken);
@@ -128,7 +133,7 @@ router.delete('/:id', async (req, res) => {
 
 /**
  * POST /api/devices/:id/wake
- * Send wake-up push notification to a camera device
+ * Send wake-up push notification to a camera device via FCM
  */
 router.post('/:id/wake', async (req, res) => {
   try {
@@ -143,19 +148,44 @@ router.post('/:id/wake', async (req, res) => {
     }
 
     if (!device.fcmToken) {
-      return res.status(400).json({ error: 'Camera has no push token registered' });
+      return res.status(400).json({
+        error: 'Camera has no push token registered. Open the Vigilix app on the camera device first.',
+      });
     }
 
-    // TODO: Send FCM push notification when Firebase is configured
-    // For now, just mark the intent
-    console.log(`[Devices] Wake request for: ${device.deviceName} (FCM: ${device.fcmToken ? 'yes' : 'no'})`);
+    // Rate limit: max 1 wake per 30 seconds per device
+    const lastWake = wakeRateLimit.get(device._id.toString());
+    if (lastWake && (Date.now() - lastWake) < WAKE_COOLDOWN_MS) {
+      const remaining = Math.ceil((WAKE_COOLDOWN_MS - (Date.now() - lastWake)) / 1000);
+      return res.status(429).json({
+        error: `Please wait ${remaining}s before sending another wake signal`,
+      });
+    }
 
-    res.json({
-      success: true,
-      message: 'Wake signal sent',
-      roomCode: device.roomCode,
-    });
+    // Send FCM push notification
+    const result = await sendWakeNotification(device.fcmToken, device.roomCode);
+
+    if (result.success) {
+      wakeRateLimit.set(device._id.toString(), Date.now());
+      console.log(`[Devices] Wake sent to: ${device.deviceName} (room: ${device.roomCode})`);
+      res.json({
+        success: true,
+        message: 'Wake signal sent',
+        roomCode: device.roomCode,
+        messageId: result.messageId,
+      });
+    } else {
+      // Handle expired token
+      if (result.tokenExpired) {
+        await Device.findByIdAndUpdate(device._id, { fcmToken: null });
+        console.log(`[Devices] Token expired for: ${device.deviceName}, cleared`);
+      }
+      res.status(500).json({
+        error: result.error || 'Failed to send wake notification',
+      });
+    }
   } catch (error) {
+    console.error('[Devices] Wake error:', error.message);
     res.status(500).json({ error: 'Failed to send wake signal' });
   }
 });
