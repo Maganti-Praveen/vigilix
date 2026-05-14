@@ -27,21 +27,10 @@ function initializeFirebase() {
         credential: admin.credential.cert(serviceAccount),
       });
       console.log('[FCM] ✅ Firebase initialized from environment variable');
+      initialized = true;
     } else {
-      // Try default credentials or check for local file
-      try {
-        const serviceAccount = require('../../vigilix6-firebase-adminsdk-fbsvc-ba23ee9b7f.json');
-        admin.initializeApp({
-          credential: admin.credential.cert(serviceAccount),
-        });
-        console.log('[FCM] ✅ Firebase initialized from local file');
-      } catch {
-        console.warn('[FCM] ⚠️ No Firebase credentials found. Push notifications disabled.');
-        return;
-      }
+      console.warn('[FCM] ⚠️ No FIREBASE_SERVICE_ACCOUNT env var. Push notifications disabled.');
     }
-
-    initialized = true;
   } catch (error) {
     console.error('[FCM] ❌ Firebase initialization error:', error.message);
   }
