@@ -184,6 +184,7 @@ function initializeSocketHandlers(io) {
       if (room) {
         roomManager.updateRoomProperty(roomCode, 'cameraType', cameraType);
         io.to(room.cameraSocketId).emit('camera-switch-command', { cameraType });
+        console.log(`[Socket] Switch camera to ${cameraType} in room: ${roomCode}`);
       }
     });
 

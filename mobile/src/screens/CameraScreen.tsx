@@ -31,6 +31,9 @@ import { VButton } from '../components/ui/VButton';
 import * as Clipboard from 'expo-clipboard';
 import backgroundService from '../services/backgroundService';
 import recordingService from '../services/recordingService';
+import hardwareService from '../services/hardwareService';
+import socketService from '../services/socketService';
+import { SOCKET_EVENTS } from '../constants';
 
 const { width: SCREEN_W, height: SCREEN_H } = Dimensions.get('window');
 
@@ -47,12 +50,13 @@ export function CameraScreen({ onBack }: CameraScreenProps) {
     roomCode, isStreaming, isFrontCamera, isFlashOn,
     isMicEnabled, isRecording, viewerCount, connectionStatus,
     streamQuality, videoQuality, setFlashOn, setMicEnabled, setIsRecording,
-    toggleCamera, setMode, setStreamQuality, setError, error,
+    setIsFrontCamera, toggleCamera, setMode, setStreamQuality, setError, error,
   } = useAppStore();
 
   const {
     connect, createRoom, startStream, stopStream, leaveRoom, disconnect,
-    sendBatteryStatus, setOnFlashCommand, setOnRecordingCommand,
+    sendBatteryStatus, setOnFlashCommand, setOnCameraSwitchCommand, setOnRecordingCommand,
+    toggleFlash,
   } = useSocket();
   const {
     localStream, remoteStream, peerConnected,
@@ -105,12 +109,116 @@ export function CameraScreen({ onBack }: CameraScreenProps) {
     return () => { if (batteryIntervalRef.current) clearInterval(batteryIntervalRef.current); };
   }, [isStreaming]);
 
+  // ─── Control handlers ─────────────────────────────────────────
+  const handleFlashCommand = useCallback(async (enabled: boolean) => {
+    console.log('[CameraScreen] Flash command received:', enabled);
+    if (isFrontCamera && enabled) {
+      console.warn('[CameraScreen] Flash not supported on front camera');
+      return;
+    }
+    const ok = await setTorch(enabled);
+    if (ok || !enabled) {
+      setFlashOn(enabled);
+    }
+  }, [isFrontCamera, setTorch, setFlashOn]);
+
+  const handleToggleFlash = useCallback(async () => {
+    if (isFrontCamera) return;
+    const nextState = !isFlashOn;
+    console.log('[CameraScreen] handleToggleFlash toggling to:', nextState);
+    const ok = await setTorch(nextState);
+    if (ok || !nextState) {
+      setFlashOn(nextState);
+      if (roomCode) {
+        toggleFlash(roomCode, nextState);
+      }
+    }
+  }, [isFlashOn, isFrontCamera, setTorch, setFlashOn, roomCode, toggleFlash]);
+
+  const handleToggleMic = useCallback(() => {
+    setMicEnabled(!isMicEnabled);
+    toggleAudio(!isMicEnabled);
+  }, [isMicEnabled, setMicEnabled, toggleAudio]);
+
+  const handleSwitchCamera = useCallback(async (targetType?: string) => {
+    console.log('[CameraScreen] handleSwitchCamera triggered, targetType:', targetType);
+    let nextIsFront: boolean;
+    if (targetType) {
+      nextIsFront = targetType === 'front' || targetType === 'user';
+      if (nextIsFront === isFrontCamera) {
+        console.log('[CameraScreen] Already on requested camera:', targetType);
+        return;
+      }
+    } else {
+      nextIsFront = !isFrontCamera;
+    }
+
+    if (isFlashOn) {
+      await setTorch(false);
+      setFlashOn(false);
+    }
+
+    setIsFrontCamera(nextIsFront);
+    const facing = nextIsFront ? 'user' : 'environment';
+    await switchCamera(facing);
+    setTimeout(async () => {
+      const supported = await isTorchSupported();
+      setTorchAvailable(supported);
+    }, 500);
+  }, [isFrontCamera, setIsFrontCamera, switchCamera, isFlashOn, setTorch, setFlashOn, isTorchSupported]);
+
+  const handleToggleRecording = useCallback(() => {
+    if (!isRecording) {
+      setIsRecording(true);
+      setRecordingDuration(0);
+      recordingTimerRef.current = setInterval(() => setRecordingDuration(d => d + 1), 1000);
+    } else {
+      if (recordingTimerRef.current) clearInterval(recordingTimerRef.current);
+      setIsRecording(false);
+      setRecordingDuration(0);
+    }
+  }, [isRecording, setIsRecording]);
+
+  const handleFlashCommandRef = useRef(handleFlashCommand);
+  handleFlashCommandRef.current = handleFlashCommand;
+
+  const handleSwitchCameraRef = useRef(handleSwitchCamera);
+  handleSwitchCameraRef.current = handleSwitchCamera;
+
   // ─── Mount ─────────────────────────────────────────────────────
   useEffect(() => {
     if (hasInitialized.current) return;
     hasInitialized.current = true;
     setMode('camera');
-    setOnFlashCommand((enabled: boolean) => { setTorch(enabled); });
+
+    // Ensure loudspeaker is engaged at max volume
+    hardwareService.setSpeakerphone(true).catch(() => {});
+
+    // Remote flash command from viewer
+    setOnFlashCommand((enabled: boolean) => {
+      handleFlashCommandRef.current?.(enabled);
+    });
+
+    // Remote camera switch command from viewer
+    setOnCameraSwitchCommand((cameraType?: string) => {
+      handleSwitchCameraRef.current?.(cameraType);
+    });
+
+    // Direct socketService listener backups to guarantee remote commands are never dropped
+    const onDirectFlash = (data: any) => {
+      const enabled = typeof data === 'object' && data !== null ? Boolean(data.enabled) : Boolean(data);
+      console.log('[CameraScreen] Direct socket flash-command received:', enabled);
+      handleFlashCommandRef.current?.(enabled);
+    };
+    const onDirectSwitch = (data: any) => {
+      const cameraType = typeof data === 'object' && data !== null ? data.cameraType : data;
+      console.log('[CameraScreen] Direct socket camera-switch-command received:', cameraType);
+      handleSwitchCameraRef.current?.(cameraType);
+    };
+
+    socketService.on(SOCKET_EVENTS.FLASH_COMMAND, onDirectFlash);
+    socketService.on(SOCKET_EVENTS.CAMERA_SWITCH_COMMAND, onDirectSwitch);
+
     // Remote recording control from viewer
     setOnRecordingCommand((action: 'start' | 'stop') => {
       if (action === 'start') {
@@ -123,6 +231,8 @@ export function CameraScreen({ onBack }: CameraScreenProps) {
     });
     connect();
     return () => {
+      socketService.off(SOCKET_EVENTS.FLASH_COMMAND, onDirectFlash);
+      socketService.off(SOCKET_EVENTS.CAMERA_SWITCH_COMMAND, onDirectSwitch);
       if (recordingTimerRef.current) clearInterval(recordingTimerRef.current);
       if (batteryIntervalRef.current) clearInterval(batteryIntervalRef.current);
       deactivateKeepAwake('camera');
@@ -157,7 +267,11 @@ export function CameraScreen({ onBack }: CameraScreenProps) {
         videoQuality
       );
       setStreamURL(stream.toURL());
-      setTimeout(() => setTorchAvailable(isTorchSupported()), 500);
+      setTimeout(async () => {
+        const supported = await isTorchSupported();
+        setTorchAvailable(supported);
+      }, 500);
+      hardwareService.setSpeakerphone(true).catch(() => {});
       const result = await createRoom();
       if (result.success) {
         startStream();
@@ -186,11 +300,11 @@ export function CameraScreen({ onBack }: CameraScreenProps) {
       setIsRecording(false);
       setRecordingDuration(0);
     }
-    if (isFlashOn) { setTorch(false); setFlashOn(false); }
+    if (isFlashOn) { setTorch(false).catch(() => {}); setFlashOn(false); }
     backgroundService.stop();
     stopStream(); leaveRoom(); cleanupWebRTC();
     setStreamURL(null); setTorchAvailable(false); setError(null);
-  }, [stopStream, leaveRoom, cleanupWebRTC, isRecording, isFlashOn]);
+  }, [stopStream, leaveRoom, cleanupWebRTC, isRecording, isFlashOn, setTorch, setFlashOn]);
 
   // ─── Hardware back button handling ────────────────────────────
   useEffect(() => {
@@ -220,37 +334,6 @@ export function CameraScreen({ onBack }: CameraScreenProps) {
     const subscription = BackHandler.addEventListener('hardwareBackPress', onBackPress);
     return () => subscription.remove();
   }, [isStreaming, handleStopStream, onBack]);
-
-  // ─── Control handlers ─────────────────────────────────────────
-  const handleToggleFlash = useCallback(() => {
-    if (isFrontCamera || !torchAvailable) return;
-    const ok = setTorch(!isFlashOn);
-    if (ok) setFlashOn(!isFlashOn);
-  }, [isFlashOn, isFrontCamera, torchAvailable, setTorch, setFlashOn]);
-
-  const handleToggleMic = useCallback(() => {
-    setMicEnabled(!isMicEnabled);
-    toggleAudio(!isMicEnabled);
-  }, [isMicEnabled, setMicEnabled, toggleAudio]);
-
-  const handleSwitchCamera = useCallback(async () => {
-    if (isFlashOn) { setTorch(false); setFlashOn(false); }
-    toggleCamera();
-    await switchCamera();
-    setTimeout(() => setTorchAvailable(isTorchSupported()), 500);
-  }, [toggleCamera, switchCamera, isFlashOn, setTorch, setFlashOn, isTorchSupported]);
-
-  const handleToggleRecording = useCallback(() => {
-    if (!isRecording) {
-      setIsRecording(true);
-      setRecordingDuration(0);
-      recordingTimerRef.current = setInterval(() => setRecordingDuration(d => d + 1), 1000);
-    } else {
-      if (recordingTimerRef.current) clearInterval(recordingTimerRef.current);
-      setIsRecording(false);
-      setRecordingDuration(0);
-    }
-  }, [isRecording, setIsRecording]);
 
   const handleCopyCode = useCallback(async () => {
     if (roomCode) {
@@ -413,11 +496,11 @@ export function CameraScreen({ onBack }: CameraScreenProps) {
           <TouchableOpacity
             activeOpacity={0.7}
             onPress={handleToggleFlash}
-            disabled={isFrontCamera || !torchAvailable}
+            disabled={isFrontCamera}
             style={[
               styles.ctl,
               isFlashOn && styles.ctlActive,
-              (!torchAvailable || isFrontCamera) && styles.ctlDisabled,
+              isFrontCamera && styles.ctlDisabled,
             ]}
           >
             {isFlashOn ? (
@@ -430,7 +513,7 @@ export function CameraScreen({ onBack }: CameraScreenProps) {
           {/* 2. Switch Camera */}
           <TouchableOpacity
             activeOpacity={0.7}
-            onPress={handleSwitchCamera}
+            onPress={() => handleSwitchCamera()}
             style={styles.ctl}
           >
             <SwitchCamera size={20} color="#FFF" />

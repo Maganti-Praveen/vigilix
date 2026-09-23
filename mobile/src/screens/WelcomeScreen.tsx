@@ -5,6 +5,7 @@ import {
   StyleSheet,
   ScrollView,
   StatusBar,
+  Image,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -44,21 +45,11 @@ export default function WelcomeScreen({ onLogin, onRegister }: WelcomeScreenProp
         {/* Top Header with Brandmark and Ready badge */}
         <View style={styles.topHeader}>
           <View style={styles.brandRow}>
-            <LinearGradient
-              colors={[theme.accent.secondary, theme.accent.primary]}
-              start={{ x: 0, y: 0 }}
-              end={{ x: 1, y: 1 }}
+            <Image
+              source={require('../../assets/vigilix-logo.png')}
               style={styles.brandmark}
-            >
-              <Svg width={18} height={18} viewBox="0 0 24 24" fill="none">
-                <Path
-                  d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"
-                  stroke="#FFFFFF"
-                  strokeWidth={2}
-                />
-                <Circle cx={12} cy={11} r={3} stroke="#FFFFFF" strokeWidth={2} />
-              </Svg>
-            </LinearGradient>
+              resizeMode="contain"
+            />
             <View>
               <Text style={[styles.brandName, { color: theme.text.primary }]}>Vigilix</Text>
               <Text style={[styles.brandSub, { color: theme.text.secondary }]}>

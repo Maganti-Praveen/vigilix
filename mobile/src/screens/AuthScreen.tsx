@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useRef, useEffect, useCallback } from 'react';
 import {
   View,
   Text,
@@ -8,6 +8,7 @@ import {
   Platform,
   ScrollView,
   Alert,
+  Keyboard,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { ArrowLeft, AlertCircle, Eye, EyeOff } from 'lucide-react-native';
@@ -26,6 +27,7 @@ export default function AuthScreen({ mode, onSwitchMode, onBack }: AuthScreenPro
   const { theme } = useTheme();
   const insets = useSafeAreaInsets();
   const { login, register, isLoading, error, clearError } = useAuthStore();
+  const scrollViewRef = useRef<ScrollView>(null);
 
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
@@ -33,8 +35,35 @@ export default function AuthScreen({ mode, onSwitchMode, onBack }: AuthScreenPro
   const [confirmPassword, setConfirmPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+  const [keyboardHeight, setKeyboardHeight] = useState(0);
 
   const isLogin = mode === 'login';
+
+  // Listen to keyboard appearance to dynamically expand bottom padding
+  useEffect(() => {
+    const showSub = Keyboard.addListener(
+      Platform.OS === 'ios' ? 'keyboardWillShow' : 'keyboardDidShow',
+      (e) => {
+        setKeyboardHeight(e.endCoordinates.height);
+      }
+    );
+    const hideSub = Keyboard.addListener(
+      Platform.OS === 'ios' ? 'keyboardWillHide' : 'keyboardDidHide',
+      () => {
+        setKeyboardHeight(0);
+      }
+    );
+    return () => {
+      showSub.remove();
+      hideSub.remove();
+    };
+  }, []);
+
+  const scrollToInput = useCallback((yOffset: number) => {
+    setTimeout(() => {
+      scrollViewRef.current?.scrollTo({ y: yOffset, animated: true });
+    }, 120);
+  }, []);
 
   const handleTabChange = (tab: 'login' | 'register') => {
     clearError();
@@ -80,11 +109,12 @@ export default function AuthScreen({ mode, onSwitchMode, onBack }: AuthScreenPro
         style={styles.keyboardView}
       >
         <ScrollView
+          ref={scrollViewRef}
           contentContainerStyle={[
             styles.scrollContent,
             {
               paddingTop: Math.max(insets.top + 10, 24),
-              paddingBottom: Platform.OS === 'ios' ? Math.max(insets.bottom + 20, 28) : 40,
+              paddingBottom: Math.max(keyboardHeight + 60, insets.bottom + 60, 200),
             },
           ]}
           keyboardShouldPersistTaps="handled"
@@ -220,6 +250,7 @@ export default function AuthScreen({ mode, onSwitchMode, onBack }: AuthScreenPro
                   onChangeText={setName}
                   autoCapitalize="words"
                   autoCorrect={false}
+                  onFocus={() => scrollToInput(40)}
                 />
               )}
 
@@ -232,6 +263,7 @@ export default function AuthScreen({ mode, onSwitchMode, onBack }: AuthScreenPro
                 keyboardType="email-address"
                 autoCapitalize="none"
                 autoCorrect={false}
+                onFocus={() => scrollToInput(isLogin ? 60 : 110)}
               />
 
               <VInput
@@ -243,6 +275,7 @@ export default function AuthScreen({ mode, onSwitchMode, onBack }: AuthScreenPro
                 secureTextEntry={!showPassword}
                 autoCapitalize="none"
                 autoCorrect={false}
+                onFocus={() => scrollToInput(isLogin ? 140 : 190)}
                 rightIcon={
                   <TouchableOpacity
                     onPress={() => setShowPassword(!showPassword)}
@@ -267,6 +300,7 @@ export default function AuthScreen({ mode, onSwitchMode, onBack }: AuthScreenPro
                   secureTextEntry={!showConfirmPassword}
                   autoCapitalize="none"
                   autoCorrect={false}
+                  onFocus={() => scrollToInput(270)}
                   rightIcon={
                     <TouchableOpacity
                       onPress={() => setShowConfirmPassword(!showConfirmPassword)}

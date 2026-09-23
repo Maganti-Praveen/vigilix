@@ -1,198 +1,103 @@
 /**
  * SplashScreen — Vigilix
- * Matches the reference design with ambient glow, shield brandmark,
- * tracked typography, and animated progress track.
+ * Plays the official first concept video animation on app launch,
+ * with smooth fade transitions, skip control, and fallback timer.
  */
 
-import React, { useEffect, useRef } from 'react';
-import { View, Text, StyleSheet, Animated, Easing, TouchableOpacity } from 'react-native';
-import { LinearGradient } from 'expo-linear-gradient';
-import Svg, { Path, Circle } from 'react-native-svg';
-import { useTheme } from '../design/ThemeContext';
+import React, { useRef, useState, useCallback, useEffect } from 'react';
+import {
+  View,
+  Text,
+  StyleSheet,
+  Animated,
+  TouchableOpacity,
+  StatusBar,
+  Dimensions,
+  Platform,
+} from 'react-native';
+import { Video, ResizeMode, AVPlaybackStatus } from 'expo-av';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { ChevronRight } from 'lucide-react-native';
+
+const { width: SCREEN_W, height: SCREEN_H } = Dimensions.get('window');
 
 interface SplashScreenProps {
   onFinish: () => void;
 }
 
 export function SplashScreen({ onFinish }: SplashScreenProps) {
-  const { theme, isDark } = useTheme();
+  const insets = useSafeAreaInsets();
+  const videoRef = useRef<Video>(null);
+  const fadeAnim = useRef(new Animated.Value(1)).current;
+  const [hasFinished, setHasFinished] = useState(false);
 
-  const logoScale = useRef(new Animated.Value(0.78)).current;
-  const logoOpacity = useRef(new Animated.Value(0)).current;
-  const contentOpacity = useRef(new Animated.Value(0)).current;
-  const glowPulse = useRef(new Animated.Value(0.4)).current;
-  const progressAnim = useRef(new Animated.Value(0)).current;
-  const screenFadeOut = useRef(new Animated.Value(1)).current;
+  const handleFinish = useCallback(() => {
+    if (hasFinished) return;
+    setHasFinished(true);
 
-  useEffect(() => {
-    // Ambient glow pulsing animation
-    Animated.loop(
-      Animated.sequence([
-        Animated.timing(glowPulse, {
-          toValue: 0.8,
-          duration: 1200,
-          useNativeDriver: true,
-        }),
-        Animated.timing(glowPulse, {
-          toValue: 0.4,
-          duration: 1200,
-          useNativeDriver: true,
-        }),
-      ])
-    ).start();
-
-    // Progress bar fill animation
-    Animated.timing(progressAnim, {
-      toValue: 1,
-      duration: 1800,
-      easing: Easing.bezier(0.4, 0, 0.2, 1),
-      useNativeDriver: false,
-    }).start();
-
-    // Screen entrance & completion sequence
-    Animated.sequence([
-      Animated.parallel([
-        Animated.spring(logoScale, {
-          toValue: 1,
-          friction: 7,
-          tension: 50,
-          useNativeDriver: true,
-        }),
-        Animated.timing(logoOpacity, {
-          toValue: 1,
-          duration: 500,
-          useNativeDriver: true,
-        }),
-      ]),
-      Animated.timing(contentOpacity, {
-        toValue: 1,
-        duration: 400,
-        easing: Easing.out(Easing.cubic),
-        useNativeDriver: true,
-      }),
-      Animated.delay(1000),
-      Animated.timing(screenFadeOut, {
-        toValue: 0,
-        duration: 350,
-        easing: Easing.in(Easing.cubic),
-        useNativeDriver: true,
-      }),
-    ]).start(() => {
+    Animated.timing(fadeAnim, {
+      toValue: 0,
+      duration: 350,
+      useNativeDriver: true,
+    }).start(() => {
       onFinish();
     });
-  }, []);
+  }, [hasFinished, onFinish, fadeAnim]);
 
-  const progressWidth = progressAnim.interpolate({
-    inputRange: [0, 1],
-    outputRange: ['0%', '100%'],
-  });
+  // Safety fallback timer — ensure user is never stuck if video fails to load
+  useEffect(() => {
+    const safetyTimer = setTimeout(() => {
+      handleFinish();
+    }, 11000); // video is ~10s
+
+    return () => clearTimeout(safetyTimer);
+  }, [handleFinish]);
+
+  const handlePlaybackStatusUpdate = useCallback(
+    (status: AVPlaybackStatus) => {
+      if (status.isLoaded) {
+        if (status.didJustFinish) {
+          handleFinish();
+        }
+      } else if (status.error) {
+        console.warn('[SplashScreen Video Error]:', status.error);
+        handleFinish();
+      }
+    },
+    [handleFinish]
+  );
 
   return (
-    <Animated.View
-      style={[
-        styles.container,
-        {
-          backgroundColor: theme.bg.primary,
-          opacity: screenFadeOut,
-        },
-      ]}
-    >
-      {/* Background ambient radial glow */}
-      <Animated.View
-        style={[
-          styles.glow,
-          {
-            backgroundColor: theme.accent.primary,
-            opacity: glowPulse,
-          },
-        ]}
+    <Animated.View style={[styles.container, { opacity: fadeAnim }]}>
+      <StatusBar barStyle="light-content" backgroundColor="#000000" translucent />
+
+      {/* Splash Video Player */}
+      <Video
+        ref={videoRef}
+        source={require('../../assets/splash-video.mp4')}
+        style={styles.video}
+        resizeMode={ResizeMode.COVER}
+        shouldPlay
+        isLooping={false}
+        isMuted={false}
+        onPlaybackStatusUpdate={handlePlaybackStatusUpdate}
+        onError={(err) => {
+          console.warn('[SplashScreen Error]:', err);
+          handleFinish();
+        }}
       />
 
-      <View style={styles.centerBox}>
-        {/* Brandmark Tile */}
-        <Animated.View
-          style={[
-            styles.logoTileWrap,
-            {
-              opacity: logoOpacity,
-              transform: [{ scale: logoScale }],
-            },
-          ]}
+      {/* Skip Button */}
+      <View style={[styles.topControls, { top: Math.max(insets.top + 10, 24) }]}>
+        <TouchableOpacity
+          style={styles.skipButton}
+          onPress={handleFinish}
+          activeOpacity={0.7}
         >
-          <LinearGradient
-            colors={[theme.accent.secondary, theme.accent.primary]}
-            start={{ x: 0, y: 0 }}
-            end={{ x: 1, y: 1 }}
-            style={styles.logoTile}
-          >
-            <Svg width={42} height={42} viewBox="0 0 24 24" fill="none">
-              <Path
-                d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"
-                fill="rgba(255, 255, 255, 0.12)"
-                stroke="#FFFFFF"
-                strokeWidth={1.8}
-              />
-              <Circle cx={12} cy={11} r={3.2} stroke="#FFFFFF" strokeWidth={1.8} />
-              <Path d="M12 7.8v.01M9 14.2l6-6" stroke="#FFFFFF" strokeWidth={1.8} />
-            </Svg>
-          </LinearGradient>
-        </Animated.View>
-
-        {/* Brand Title */}
-        <Animated.Text
-          style={[
-            styles.brandTitle,
-            {
-              color: theme.text.primary,
-              opacity: contentOpacity,
-            },
-          ]}
-        >
-          VIGILIX
-        </Animated.Text>
-
-        {/* Subtitle */}
-        <Animated.Text
-          style={[
-            styles.brandSubtitle,
-            {
-              color: theme.text.secondary,
-              opacity: contentOpacity,
-            },
-          ]}
-        >
-          Private mobile surveillance
-        </Animated.Text>
-
-        {/* Animated Progress Bar */}
-        <Animated.View
-          style={[
-            styles.progressBarTrack,
-            {
-              backgroundColor: theme.border.primary,
-              opacity: contentOpacity,
-            },
-          ]}
-        >
-          <Animated.View style={[styles.progressBarFill, { width: progressWidth }]}>
-            <LinearGradient
-              colors={[theme.accent.secondary, theme.accent.primary]}
-              start={{ x: 0, y: 0 }}
-              end={{ x: 1, y: 0 }}
-              style={StyleSheet.absoluteFill}
-            />
-          </Animated.View>
-        </Animated.View>
+          <Text style={styles.skipText}>Skip</Text>
+          <ChevronRight size={14} color="#FFFFFF" />
+        </TouchableOpacity>
       </View>
-
-      {/* Skip button at the bottom */}
-      <TouchableOpacity
-        activeOpacity={0.6}
-        onPress={onFinish}
-        style={styles.skipButton}
-      >
-        <Text style={[styles.skipText, { color: theme.text.tertiary }]}>Skip</Text>
-      </TouchableOpacity>
     </Animated.View>
   );
 }
@@ -200,66 +105,39 @@ export function SplashScreen({ onFinish }: SplashScreenProps) {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    alignItems: 'center',
+    backgroundColor: '#000000',
     justifyContent: 'center',
-    paddingHorizontal: 24,
+    alignItems: 'center',
   },
-  glow: {
+  video: {
+    width: SCREEN_W,
+    height: SCREEN_H,
     position: 'absolute',
-    width: 260,
-    height: 260,
-    borderRadius: 130,
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
   },
-  centerBox: {
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  logoTileWrap: {
-    shadowColor: '#3976FF',
-    shadowOffset: { width: 0, height: 16 },
-    shadowOpacity: 0.35,
-    shadowRadius: 30,
-    elevation: 12,
-  },
-  logoTile: {
-    width: 82,
-    height: 82,
-    borderRadius: 26,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  brandTitle: {
-    fontSize: 24,
-    fontWeight: '800',
-    letterSpacing: 6,
-    marginTop: 22,
-    textAlign: 'center',
-  },
-  brandSubtitle: {
-    fontSize: 12,
-    letterSpacing: 0.8,
-    marginTop: 6,
-    textAlign: 'center',
-  },
-  progressBarTrack: {
-    width: 160,
-    height: 4,
-    borderRadius: 999,
-    overflow: 'hidden',
-    marginTop: 28,
-  },
-  progressBarFill: {
-    height: '100%',
-    borderRadius: 999,
+  topControls: {
+    position: 'absolute',
+    right: 18,
+    zIndex: 20,
   },
   skipButton: {
-    position: 'absolute',
-    bottom: 36,
-    paddingVertical: 8,
-    paddingHorizontal: 16,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 999,
+    backgroundColor: 'rgba(0, 0, 0, 0.45)',
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.15)',
   },
   skipText: {
-    fontSize: 12,
-    letterSpacing: 0.5,
+    color: '#FFFFFF',
+    fontSize: 11,
+    fontWeight: '600',
+    letterSpacing: 0.3,
   },
 });

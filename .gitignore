@@ -38,7 +38,8 @@ Thumbs.db
 *.log
 npm-debug.log*
 
-# Gemini
+# Gemini & Secrets
 .gemini/
+*firebase-adminsdk*.json
 vigilix6-firebase-adminsdk-fbsvc-ba23ee9b7f.json
 google-services.json

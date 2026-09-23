@@ -31,6 +31,7 @@ interface AppState {
 
   // Camera state
   isFrontCamera: boolean;
+  setIsFrontCamera: (isFront: boolean) => void;
   toggleCamera: () => void;
   isFlashOn: boolean;
   setFlashOn: (on: boolean) => void;
@@ -98,6 +99,7 @@ export const useAppStore = create<AppState>((set) => ({
   setRoomCode: (roomCode) => set({ roomCode }),
   setConnectionStatus: (connectionStatus) => set({ connectionStatus }),
   setIsStreaming: (isStreaming) => set({ isStreaming }),
+  setIsFrontCamera: (isFrontCamera) => set({ isFrontCamera }),
   toggleCamera: () => set((state) => ({ isFrontCamera: !state.isFrontCamera })),
   setFlashOn: (isFlashOn) => set({ isFlashOn }),
   setMicEnabled: (isMicEnabled) => set({ isMicEnabled }),

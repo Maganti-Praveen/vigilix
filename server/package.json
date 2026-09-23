@@ -10,6 +10,7 @@
   "dependencies": {
     "bcryptjs": "^3.0.3",
     "cors": "^2.8.5",
+    "dotenv": "^18.0.3",
     "express": "^4.21.0",
     "firebase-admin": "^13.9.0",
     "jsonwebtoken": "^9.0.3",

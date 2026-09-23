@@ -14,6 +14,7 @@ import type { CreateRoomResponse, JoinRoomResponse } from '../types';
 export function useSocket() {
   const isConnectedRef = useRef(false);
   const onFlashCommandRef = useRef<((enabled: boolean) => void) | null>(null);
+  const onCameraSwitchCommandRef = useRef<((cameraType?: string) => void) | null>(null);
   const onRecordingCommandRef = useRef<((action: 'start' | 'stop') => void) | null>(null);
   const {
     setConnectionStatus,
@@ -105,6 +106,14 @@ export function useSocket() {
       setFlashOn(enabled);
       if (onFlashCommandRef.current) {
         onFlashCommandRef.current(enabled);
+      }
+    });
+
+    // Camera switch command (camera receives from viewer)
+    socket.on(SOCKET_EVENTS.CAMERA_SWITCH_COMMAND, ({ cameraType }: any) => {
+      console.log('[useSocket] Camera switch command received:', cameraType);
+      if (onCameraSwitchCommandRef.current) {
+        onCameraSwitchCommandRef.current(cameraType);
       }
     });
 
@@ -244,9 +253,20 @@ export function useSocket() {
     onFlashCommandRef.current = cb;
   }, []);
 
+  // Register camera switch command callback (camera mode)
+  const setOnCameraSwitchCommand = useCallback((cb: (cameraType?: string) => void) => {
+    onCameraSwitchCommandRef.current = cb;
+  }, []);
+
   // Register recording command callback (camera mode)
   const setOnRecordingCommand = useCallback((cb: (action: 'start' | 'stop') => void) => {
     onRecordingCommandRef.current = cb;
+  }, []);
+
+  // Remote camera switch control (viewer sends to camera)
+  const switchCamera = useCallback((roomCode: string, cameraType: 'user' | 'environment') => {
+    console.log('[useSocket] Emitting switch-camera, room:', roomCode, 'cameraType:', cameraType);
+    socketService.emit(SOCKET_EVENTS.SWITCH_CAMERA, { roomCode, cameraType });
   }, []);
 
   // Remote recording control (viewer sends to camera)
@@ -270,8 +290,10 @@ export function useSocket() {
     stopStream,
     toggleFlash,
     toggleMic,
+    switchCamera,
     sendBatteryStatus,
     setOnFlashCommand,
+    setOnCameraSwitchCommand,
     setOnRecordingCommand,
     startRecording,
     stopRecording,

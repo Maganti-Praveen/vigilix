@@ -236,8 +236,8 @@ export function useWebRTC() {
     webrtcService.toggleVideo(enabled);
   }, []);
 
-  const switchCamera = useCallback(async () => {
-    await webrtcService.switchCamera();
+  const switchCamera = useCallback(async (facingMode?: 'user' | 'environment') => {
+    await webrtcService.switchCamera(facingMode);
   }, []);
 
   const cleanup = useCallback(() => {
@@ -359,12 +359,12 @@ export function useWebRTC() {
     };
   }, [startAsCamera, startAsViewer, handleAnswer, handleICECandidate]);
 
-  const setTorch = useCallback((enabled: boolean): boolean => {
-    return webrtcService.setTorch(enabled);
+  const setTorch = useCallback(async (enabled: boolean): Promise<boolean> => {
+    return await webrtcService.setTorch(enabled);
   }, []);
 
-  const isTorchSupported = useCallback((): boolean => {
-    return webrtcService.isTorchSupported();
+  const isTorchSupported = useCallback(async (): Promise<boolean> => {
+    return await webrtcService.isTorchSupported();
   }, []);
 
   const setMaxBitrate = useCallback(async (bitrate: number) => {

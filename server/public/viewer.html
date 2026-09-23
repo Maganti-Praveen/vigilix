@@ -1086,7 +1086,7 @@
   </aside>
 
   <!-- Socket.IO -->
-  <script src="https://cdn.socket.io/4.7.5/socket.io.min.js"></script>
+  <script src="/socket.io/socket.io.js"></script>
   <script>
     // ─── Configuration ─────────────────────────────────────────
     const SERVER_URL = window.location.origin;
@@ -1395,24 +1395,21 @@
       }
       pendingICECandidates = [];
 
-      // Acquire Talk-Back Mic
+      // Setup Talk-Back Audio Track (Non-blocking)
       try {
-        localMicStream = await navigator.mediaDevices.getUserMedia({
-          audio: {
-            echoCancellation: true,
-            noiseSuppression: true,
-            autoGainControl: true,
-            sampleRate: 48000,
-          },
-          video: false,
-        });
-        localMicStream.getAudioTracks().forEach(track => {
-          track.enabled = false; // muted initially
-          peerConnection.addTrack(track, localMicStream);
-        });
-        log('Talk-Back microphone initialized (armed, currently muted).', 'ok');
+        const AudioCtx = window.AudioContext || window.webkitAudioContext;
+        if (AudioCtx) {
+          const dummyCtx = new AudioCtx();
+          const osc = dummyCtx.createOscillator();
+          const dst = dummyCtx.createMediaStreamDestination();
+          osc.connect(dst);
+          osc.start();
+          const dummyTrack = dst.stream.getAudioTracks()[0];
+          dummyTrack.enabled = false;
+          peerConnection.addTrack(dummyTrack, dst.stream);
+        }
       } catch (err) {
-        log('Talk-Back mic unavailable: ' + err.message, 'warn');
+        log('Initial audio track setup: ' + err.message, 'warn');
       }
 
       // Create Answer
@@ -1523,17 +1520,76 @@
 
     // ─── Media Controls ────────────────────────────────────────
     // Talk Back Toggle
-    talkBtn.addEventListener('click', () => {
-      if (!localMicStream) {
-        alert('Microphone not detected or permission denied.');
-        return;
-      }
+    talkBtn.addEventListener('click', async () => {
       talkOn = !talkOn;
-      localMicStream.getAudioTracks().forEach(t => t.enabled = talkOn);
-      talkBtn.classList.toggle('active-cyan', talkOn);
-      talkBtnText.textContent = talkOn ? 'Talking...' : 'Talk';
-      audioWave.style.display = talkOn ? 'inline-flex' : 'none';
-      log(`Talk-Back ${talkOn ? 'TRANSMITTING' : 'MUTED'}`, talkOn ? 'ok' : 'info');
+      if (talkOn) {
+        try {
+          if (!localMicStream) {
+            log('Requesting microphone access for Talk-Back...', 'info');
+            localMicStream = await navigator.mediaDevices.getUserMedia({
+              audio: {
+                echoCancellation: true,
+                noiseSuppression: true,
+                autoGainControl: true,
+                sampleRate: 48000,
+              },
+              video: false,
+            });
+            // Pre-amplify mic track via Web Audio API so it projects loudly through the camera speaker like YouTube
+            let outgoingTrack = localMicStream.getAudioTracks()[0];
+            try {
+              const AudioContextClass = window.AudioContext || window.webkitAudioContext;
+              if (AudioContextClass) {
+                const micAudioCtx = new AudioContextClass();
+                const micSource = micAudioCtx.createMediaStreamSource(localMicStream);
+                const compressor = micAudioCtx.createDynamicsCompressor();
+                compressor.threshold.setValueAtTime(-24, micAudioCtx.currentTime);
+                compressor.knee.setValueAtTime(30, micAudioCtx.currentTime);
+                compressor.ratio.setValueAtTime(12, micAudioCtx.currentTime);
+                compressor.attack.setValueAtTime(0.003, micAudioCtx.currentTime);
+                compressor.release.setValueAtTime(0.25, micAudioCtx.currentTime);
+
+                const gainNode = micAudioCtx.createGain();
+                gainNode.gain.setValueAtTime(3.5, micAudioCtx.currentTime); // 350% boost
+
+                const dst = micAudioCtx.createMediaStreamDestination();
+                micSource.connect(compressor);
+                compressor.connect(gainNode);
+                gainNode.connect(dst);
+                outgoingTrack = dst.stream.getAudioTracks()[0];
+                log('Talk-Back microphone amplified + dynamics compression engaged', 'ok');
+              }
+            } catch (micBoostErr) {
+              console.warn('Web Audio mic boost error, falling back to raw mic:', micBoostErr);
+            }
+
+            const sender = peerConnection?.getSenders().find(s => s.track && s.track.kind === 'audio');
+            if (sender) {
+              await sender.replaceTrack(outgoingTrack);
+            } else if (peerConnection) {
+              peerConnection.addTrack(outgoingTrack, localMicStream);
+            }
+          } else {
+            localMicStream.getAudioTracks().forEach(t => t.enabled = true);
+          }
+          talkBtn.classList.add('active-cyan');
+          talkBtnText.textContent = 'Talking...';
+          audioWave.style.display = 'inline-flex';
+          log('Talk-Back TRANSMITTING to camera node', 'ok');
+        } catch (err) {
+          talkOn = false;
+          alert('Microphone error: ' + err.message);
+          log('Microphone error: ' + err.message, 'err');
+        }
+      } else {
+        if (localMicStream) {
+          localMicStream.getAudioTracks().forEach(t => t.enabled = false);
+        }
+        talkBtn.classList.remove('active-cyan');
+        talkBtnText.textContent = 'Talk';
+        audioWave.style.display = 'none';
+        log('Talk-Back MUTED', 'info');
+      }
     });
 
     // Flash / Torch Toggle

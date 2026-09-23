@@ -11,6 +11,7 @@
  * Does NOT handle video/audio streaming — that's peer-to-peer via WebRTC
  */
 
+require('dotenv').config();
 const express = require('express');
 const http = require('http');
 const { Server } = require('socket.io');

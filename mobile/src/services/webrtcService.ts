@@ -13,6 +13,7 @@ import {
 } from 'react-native-webrtc';
 import { WEBRTC_CONFIG, VIDEO_QUALITY_PRESETS } from '../constants';
 import type { VideoQualityPreset } from '../types';
+import hardwareService from './hardwareService';
 
 // Optimized audio constraints for maximum clarity and volume
 const AUDIO_CONSTRAINTS = {
@@ -32,6 +33,7 @@ class WebRTCService {
   private localStream: MediaStream | null = null;
   private remoteStream: MediaStream | null = null;
   private pendingICECandidates: any[] = [];
+  private currentFacing: 'user' | 'environment' = 'environment';
 
   // Callbacks
   private onRemoteStream: ((stream: MediaStream) => void) | null = null;
@@ -62,6 +64,7 @@ class WebRTCService {
     quality: VideoQualityPreset = 'medium'
   ): Promise<MediaStream> {
     try {
+      this.currentFacing = facingMode;
       const preset = VIDEO_QUALITY_PRESETS[quality];
 
       const stream = await mediaDevices.getUserMedia({
@@ -75,7 +78,7 @@ class WebRTCService {
       });
 
       this.localStream = stream as MediaStream;
-      console.log('[WebRTC] Local stream obtained');
+      console.log('[WebRTC] Local stream obtained, facing:', facingMode);
       return this.localStream;
     } catch (error) {
       console.error('[WebRTC] Error getting local stream:', error);
@@ -134,15 +137,26 @@ class WebRTCService {
       console.log('[WebRTC] Remote stream received');
       if (event.stream) {
         this.remoteStream = event.stream;
+        this.boostRemoteAudio(event.stream);
         this.onRemoteStream?.(this.remoteStream!);
       }
     });
 
     // Also listen for track event (newer API)
     this.peerConnection.addEventListener('track' as any, (event: any) => {
-      console.log('[WebRTC] Remote track received');
+      console.log('[WebRTC] Remote track received, kind:', event.track?.kind);
+      if (event.track && event.track.kind === 'audio') {
+        if (typeof (event.track as any)._setVolume === 'function') {
+          (event.track as any)._setVolume(10.0);
+          console.log('[WebRTC] Direct audio track volume amplified (10x gain)');
+        }
+        hardwareService.setSpeakerphone(true).catch(e => {
+          console.warn('[WebRTC] Error engaging speakerphone:', e);
+        });
+      }
       if (event.streams && event.streams[0]) {
         this.remoteStream = event.streams[0];
+        this.boostRemoteAudio(event.streams[0]);
         this.onRemoteStream?.(this.remoteStream!);
       }
     });
@@ -169,6 +183,27 @@ class WebRTCService {
     }
 
     return this.peerConnection;
+  }
+
+  /**
+   * Boost remote talk-back audio:
+   * 1. Engage Android hardware loudspeaker mode at maximum volume
+   * 2. Amplify software track gain by 10x for high room projection like YouTube
+   */
+  private boostRemoteAudio(stream: MediaStream): void {
+    try {
+      hardwareService.setSpeakerphone(true).catch(e => {
+        console.warn('[WebRTC] Error engaging speakerphone:', e);
+      });
+      stream.getAudioTracks().forEach((track: any) => {
+        if (typeof (track as any)._setVolume === 'function') {
+          (track as any)._setVolume(10.0);
+          console.log('[WebRTC] Remote audio track volume amplified (10x gain)');
+        }
+      });
+    } catch (e) {
+      console.warn('[WebRTC] boostRemoteAudio error:', e);
+    }
   }
 
   /**
@@ -299,21 +334,57 @@ class WebRTCService {
   /**
    * Switch camera (front ↔ back)
    */
-  async switchCamera(): Promise<void> {
-    if (this.localStream) {
-      const videoTrack = this.localStream.getVideoTracks()[0];
-      if (videoTrack && typeof (videoTrack as any)._switchCamera === 'function') {
+  async switchCamera(facingMode?: 'user' | 'environment'): Promise<void> {
+    if (!this.localStream) {
+      console.warn('[WebRTC] Cannot switch camera — no local stream');
+      return;
+    }
+    const videoTrack = this.localStream.getVideoTracks()[0];
+    if (!videoTrack) {
+      console.warn('[WebRTC] Cannot switch camera — no video track');
+      return;
+    }
+
+    try {
+      const targetFacing = facingMode || (this.currentFacing === 'user' ? 'environment' : 'user');
+      console.log(`[WebRTC] Switching camera from ${this.currentFacing} to ${targetFacing}`);
+
+      if (typeof (videoTrack as any).applyConstraints === 'function') {
+        const constraints = {
+          width: 1280,
+          height: 720,
+          frameRate: 30,
+          facingMode: targetFacing,
+        };
+        await (videoTrack as any).applyConstraints(constraints);
+        this.currentFacing = targetFacing;
+        console.log('[WebRTC] Camera switched via applyConstraints to:', targetFacing);
+      } else if (typeof (videoTrack as any)._switchCamera === 'function') {
         (videoTrack as any)._switchCamera();
-        console.log('[WebRTC] Camera switched');
+        this.currentFacing = targetFacing;
+        console.log(`[WebRTC] Camera switched via _switchCamera to: ${targetFacing}`);
       }
+    } catch (e: any) {
+      console.error('[WebRTC] Failed to switch camera:', e.message || e);
     }
   }
 
   /**
    * Toggle flashlight/torch on the camera
-   * Uses react-native-webrtc's internal _setTorch() API
+   * First uses native Android CameraManager via hardwareService,
+   * with fallback to react-native-webrtc track._setTorch()
    */
-  setTorch(enabled: boolean): boolean {
+  async setTorch(enabled: boolean): Promise<boolean> {
+    try {
+      const ok = await hardwareService.setTorch(enabled);
+      if (ok) {
+        console.log(`[WebRTC] Torch ${enabled ? 'ON' : 'OFF'} via hardwareService`);
+        return true;
+      }
+    } catch (e) {
+      console.warn('[WebRTC] hardwareService.setTorch failed:', e);
+    }
+
     if (!this.localStream) {
       console.warn('[WebRTC] Cannot toggle torch — no local stream');
       return false;
@@ -328,7 +399,7 @@ class WebRTCService {
     try {
       if (typeof (videoTrack as any)._setTorch === 'function') {
         (videoTrack as any)._setTorch(enabled);
-        console.log(`[WebRTC] Torch ${enabled ? 'ON' : 'OFF'}`);
+        console.log(`[WebRTC] Torch ${enabled ? 'ON' : 'OFF'} via track._setTorch`);
         return true;
       } else {
         console.warn('[WebRTC] _setTorch not available on this track');
@@ -341,9 +412,14 @@ class WebRTCService {
   }
 
   /**
-   * Check if torch/flashlight is supported on the current video track
+   * Check if torch/flashlight is supported
    */
-  isTorchSupported(): boolean {
+  async isTorchSupported(): Promise<boolean> {
+    try {
+      const supported = await hardwareService.isTorchSupported();
+      if (supported) return true;
+    } catch {}
+
     if (!this.localStream) return false;
     const videoTrack = this.localStream.getVideoTracks()[0];
     if (!videoTrack) return false;

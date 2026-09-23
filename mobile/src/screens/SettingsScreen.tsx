@@ -8,7 +8,7 @@
 import React, { useCallback, useState } from 'react';
 import {
   View, Text, StyleSheet, ScrollView, StatusBar,
-  TouchableOpacity, Alert, Switch,
+  TouchableOpacity, Alert, Switch, Image,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useTheme } from '../design/ThemeContext';
@@ -364,7 +364,42 @@ export function SettingsScreen({ onBack, onLogout }: SettingsScreenProps) {
             </VCard>
           )}
 
-          {/* 5. Sign Out Button (.danger in reference HTML) */}
+          {/* 5. About Vigilix Block */}
+          <VCard style={styles.settingBlock}>
+            <Text style={[styles.cardKicker, { color: theme.accent.primary }]}>ABOUT</Text>
+            <View style={[styles.settingRow, { borderBottomWidth: 0 }]}>
+              <View style={styles.aboutRow}>
+                <Image
+                  source={require('../../assets/vigilix-logo.png')}
+                  style={styles.aboutLogo}
+                  resizeMode="contain"
+                />
+                <View>
+                  <Text style={[styles.aboutTitle, { color: theme.text.primary }]}>Vigilix</Text>
+                  <Text style={[styles.aboutVersion, { color: theme.text.secondary }]}>
+                    Version {APP_VERSION} (Build 2)
+                  </Text>
+                </View>
+              </View>
+
+              <TouchableOpacity
+                style={[
+                  styles.updateBtn,
+                  {
+                    backgroundColor: theme.surface.input,
+                    borderColor: theme.border.primary,
+                  },
+                ]}
+                onPress={() => updateService.checkForUpdate(true)}
+                activeOpacity={0.7}
+              >
+                <RefreshCw size={12} color={theme.text.primary} />
+                <Text style={[styles.updateBtnText, { color: theme.text.primary }]}>Updates</Text>
+              </TouchableOpacity>
+            </View>
+          </VCard>
+
+          {/* 6. Sign Out Button (.danger in reference HTML) */}
           <View style={{ marginTop: 14 }}>
             <VButton
               title="Sign out"
@@ -535,5 +570,39 @@ const styles = StyleSheet.create({
     fontSize: 11,
     fontFamily: typography.fontFamily.regular,
     marginTop: 2,
+  },
+
+  // About Block
+  aboutRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+  },
+  aboutLogo: {
+    width: 38,
+    height: 38,
+    borderRadius: 10,
+  },
+  aboutTitle: {
+    fontSize: 13,
+    fontFamily: typography.fontFamily.semibold,
+  },
+  aboutVersion: {
+    fontSize: 11,
+    fontFamily: typography.fontFamily.regular,
+    marginTop: 2,
+  },
+  updateBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 8,
+    borderWidth: 1,
+  },
+  updateBtnText: {
+    fontSize: 10,
+    fontFamily: typography.fontFamily.medium,
   },
 });

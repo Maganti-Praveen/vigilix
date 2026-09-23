@@ -60,7 +60,7 @@ export const WEBRTC_CONFIG = {
 
 // Server URL — auto-switches between local dev and production
 const LOCAL_SERVER = 'http://192.168.31.53:3001';
-const PROD_SERVER = 'https://vigilix-server.onrender.com'; // ← Update after Render deploy
+const PROD_SERVER = 'https://vigilix.onrender.com';
 
 export const SERVER_URL = __DEV__ ? LOCAL_SERVER : PROD_SERVER;
 
