@@ -18,7 +18,7 @@ interface VButtonProps {
   onPress: () => void;
   variant?: 'primary' | 'secondary' | 'ghost' | 'danger';
   size?: 'sm' | 'md' | 'lg';
-  icon?: string;
+  icon?: React.ReactNode;
   loading?: boolean;
   disabled?: boolean;
   fullWidth?: boolean;
@@ -35,7 +35,7 @@ export function VButton({
   const isDisabled = disabled || loading;
 
   const content = (
-    <View style={[styles.inner, sizeStyle]}>
+    <View style={styles.inner}>
       {loading ? (
         <ActivityIndicator
           size="small"
@@ -43,13 +43,18 @@ export function VButton({
         />
       ) : (
         <>
-          {icon && <Text style={[styles.icon, { fontSize: sizeStyle.fontSize }]}>{icon}</Text>}
+          {React.isValidElement(icon) ? (
+            <View style={{ marginRight: spacing['2'] }}>{icon}</View>
+          ) : typeof icon === 'string' ? (
+            <Text style={[styles.icon, { fontSize: sizeStyle.fontSize }]}>{icon}</Text>
+          ) : null}
           <Text
             style={[
               styles.label,
               { fontSize: sizeStyle.fontSize },
-              variant === 'ghost' && { color: theme.accent.primary },
+              variant === 'ghost' && { color: theme.text.primary },
               variant === 'secondary' && { color: theme.accent.primary },
+              variant === 'danger' && { color: theme.status.danger },
             ]}
           >
             {title}
@@ -101,10 +106,14 @@ export function VButton({
             borderColor: theme.border.accent,
           },
           variant === 'ghost' && {
-            backgroundColor: 'transparent',
+            backgroundColor: theme.surface.surface2,
+            borderWidth: 1,
+            borderColor: theme.border.primary,
           },
           variant === 'danger' && {
-            backgroundColor: theme.status.danger,
+            backgroundColor: 'rgba(217, 85, 94, 0.12)',
+            borderWidth: 1,
+            borderColor: 'rgba(217, 85, 94, 0.25)',
           },
           isDisabled && styles.disabled,
         ]}
@@ -118,28 +127,30 @@ export function VButton({
 const sizes = {
   sm: {
     paddingVertical: spacing['2'],
-    paddingHorizontal: spacing['4'],
-    borderRadius: radii.lg,
+    paddingHorizontal: spacing['3'],
+    borderRadius: radii.input,
     fontSize: typography.size.sm,
   },
   md: {
     paddingVertical: spacing['3'],
-    paddingHorizontal: spacing['5'],
-    borderRadius: radii.xl,
+    paddingHorizontal: spacing['4'],
+    borderRadius: radii.input,
     fontSize: typography.size.md,
   },
   lg: {
-    paddingVertical: spacing['4'],
-    paddingHorizontal: spacing['6'],
-    borderRadius: radii.xl,
+    paddingVertical: 14,
+    paddingHorizontal: spacing['5'],
+    borderRadius: radii.input,
     fontSize: typography.size.base,
   },
 };
 
 const styles = StyleSheet.create({
   base: {
-    borderRadius: radii.xl,
+    borderRadius: radii.input,
     overflow: 'hidden',
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   inner: {
     flexDirection: 'row',
@@ -150,7 +161,8 @@ const styles = StyleSheet.create({
   label: {
     color: '#FFF',
     fontFamily: typography.fontFamily.semibold,
-    letterSpacing: typography.letterSpacing.wide,
+    fontWeight: '600',
+    letterSpacing: typography.letterSpacing.normal,
   },
   icon: {
     marginRight: spacing['1'],

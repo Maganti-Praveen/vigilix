@@ -18,7 +18,67 @@ try {
 const wakeRateLimit = new Map();
 const WAKE_COOLDOWN_MS = 30 * 1000; // 30 seconds
 
-// All device routes require authentication
+/**
+ * POST /api/devices/wake-by-room
+ * Public endpoint allowing web viewers to wake up camera devices by room code
+ */
+router.post('/wake-by-room', async (req, res) => {
+  try {
+    const { roomCode } = req.body;
+    if (!roomCode || typeof roomCode !== 'string') {
+      return res.status(400).json({ error: 'roomCode is required' });
+    }
+
+    const code = roomCode.trim().toUpperCase();
+    const device = await Device.findOne({
+      roomCode: code,
+      role: 'camera',
+    });
+
+    if (!device) {
+      return res.status(404).json({ error: `No camera device found registered with room code "${code}"` });
+    }
+
+    if (!device.fcmToken) {
+      return res.status(400).json({
+        error: `Camera device "${device.deviceName}" has no push token registered.`,
+      });
+    }
+
+    // Rate limit: max 1 wake per 30 seconds per device
+    const lastWake = wakeRateLimit.get(device._id.toString());
+    if (lastWake && (Date.now() - lastWake) < WAKE_COOLDOWN_MS) {
+      const remaining = Math.ceil((WAKE_COOLDOWN_MS - (Date.now() - lastWake)) / 1000);
+      return res.status(429).json({
+        error: `Please wait ${remaining}s before sending another wake signal to this camera`,
+      });
+    }
+
+    const result = await sendWakeNotification(device.fcmToken, device.roomCode);
+
+    if (result.success) {
+      wakeRateLimit.set(device._id.toString(), Date.now());
+      console.log(`[Devices] Wake-by-room sent to: ${device.deviceName} (room: ${device.roomCode})`);
+      return res.json({
+        success: true,
+        message: `Wake signal sent to ${device.deviceName}`,
+        roomCode: device.roomCode,
+        deviceName: device.deviceName,
+        messageId: result.messageId,
+      });
+    } else {
+      if (result.tokenExpired) {
+        await Device.findByIdAndUpdate(device._id, { fcmToken: null });
+      }
+      return res.status(500).json({ error: result.error || 'Failed to send wake notification' });
+    }
+  } catch (error) {
+    console.error('[Devices] Wake-by-room error:', error.message);
+    return res.status(500).json({ error: 'Failed to send wake signal' });
+  }
+});
+
+// All subsequent device routes require authentication
 router.use(authenticateToken);
 
 /**
@@ -54,14 +114,14 @@ router.post('/register', async (req, res) => {
       $push: { devices: device._id },
     });
 
-    console.log(`[Devices] ✅ Registered: ${deviceName} (${role}) id=${device._id}`);
+    console.log(`[Devices] Registered: ${deviceName} (${role}) id=${device._id}`);
 
     res.status(201).json({
       success: true,
       device: device.toObject(),
     });
   } catch (error) {
-    console.error('[Devices] ❌ Register error:', error.message);
+    console.error('[Devices] Register error:', error.message);
     console.error('[Devices] Stack:', error.stack);
     res.status(500).json({ error: error.message || 'Failed to register device' });
   }

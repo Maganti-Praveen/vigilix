@@ -111,5 +111,10 @@ export const useAppStore = create<AppState>((set) => ({
   setVideoQuality: (videoQuality) => set({ videoQuality }),
   setAutoReconnect: (autoReconnect) => set({ autoReconnect }),
   setError: (error) => set({ error }),
-  resetState: () => set(initialState),
+  resetState: () =>
+    set((state) => ({
+      ...initialState,
+      videoQuality: state.videoQuality,
+      autoReconnect: state.autoReconnect,
+    })),
 }));

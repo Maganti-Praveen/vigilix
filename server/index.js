@@ -28,13 +28,13 @@ const PORT = process.env.PORT || 3001;
 const CORS_ORIGIN = process.env.CORS_ORIGIN || '*';
 const RENDER_EXTERNAL_URL = process.env.RENDER_EXTERNAL_URL || null;
 const SELF_URL = RENDER_EXTERNAL_URL || `http://localhost:${PORT}`;
-const MONGODB_URI = process.env.MONGODB_URI || null;
+const MONGODB_URI = process.env.MONGODB_URI || 'mongodb://localhost:27017/vigilix';
 
 // ─── MongoDB Connection ─────────────────────────────────────────
 if (MONGODB_URI) {
   mongoose.connect(MONGODB_URI)
     .then(async () => {
-      console.log('[MongoDB] ✅ Connected to database');
+      console.log('[MongoDB] Connected to database');
       // Drop stale unique index on roomCode (was causing registration failures)
       try {
         await mongoose.connection.collection('devices').dropIndex('roomCode_1');
@@ -43,9 +43,9 @@ if (MONGODB_URI) {
         // Index doesn't exist — that's fine
       }
     })
-    .catch(err => console.error('[MongoDB] ❌ Connection failed:', err.message));
+    .catch(err => console.error('[MongoDB] Connection failed:', err.message));
 } else {
-  console.log('[MongoDB] ⚠️ No MONGODB_URI set — running in signaling-only mode (v1.0 compatible)');
+  console.log('[MongoDB] No MONGODB_URI set — running in signaling-only mode (v1.0 compatible)');
 }
 
 // ─── Express Setup ──────────────────────────────────────────────
@@ -63,7 +63,7 @@ app.use('/api/recordings', recordingRoutes);
 app.get('/', (req, res) => {
   res.json({
     name: 'Vigilix Signaling Server',
-    version: '1.0.0',
+    version: '1.1.0',
     status: 'running',
     uptime: Math.floor(process.uptime()),
   });

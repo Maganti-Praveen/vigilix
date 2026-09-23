@@ -3,426 +3,1343 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Smart CCTV — Web Viewer</title>
+  <title>Vigilix Command Center — Live Web Viewer</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
   <style>
+    :root {
+      --bg-base: #060913;
+      --bg-surface: rgba(15, 23, 42, 0.75);
+      --bg-surface-hover: rgba(30, 41, 59, 0.85);
+      --border-subtle: rgba(255, 255, 255, 0.08);
+      --border-accent: rgba(0, 240, 255, 0.3);
+      --cyan: #00F0FF;
+      --cyan-glow: rgba(0, 240, 255, 0.25);
+      --blue: #3B82F6;
+      --emerald: #10B981;
+      --amber: #F59E0B;
+      --red: #EF4444;
+      --text-main: #F1F5F9;
+      --text-muted: #94A3B8;
+      --text-dim: #64748B;
+    }
+
     * { margin: 0; padding: 0; box-sizing: border-box; }
+
     body {
-      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-      background: #0A0E1A;
-      color: #E2E8F0;
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+      background: var(--bg-base);
+      background-image: 
+        radial-gradient(ellipse at 50% 0%, rgba(0, 240, 255, 0.07) 0%, transparent 60%),
+        radial-gradient(ellipse at 80% 80%, rgba(59, 130, 246, 0.05) 0%, transparent 50%),
+        linear-gradient(rgba(255, 255, 255, 0.02) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(255, 255, 255, 0.02) 1px, transparent 1px);
+      background-size: 100% 100%, 100% 100%, 36px 36px, 36px 36px;
+      color: var(--text-main);
       min-height: 100vh;
       display: flex;
       flex-direction: column;
       align-items: center;
-      padding: 24px;
+      padding: 20px 16px 40px;
+      overflow-x: hidden;
     }
 
-    h1 {
-      font-size: 28px;
+    /* ─── Top Navbar ────────────────────────────────────────────── */
+    .navbar {
+      width: 100%;
+      max-width: 960px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 24px;
+      padding: 12px 20px;
+      background: var(--bg-surface);
+      border: 1px solid var(--border-subtle);
+      border-radius: 18px;
+      backdrop-filter: blur(16px);
+      box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
+    }
+
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      text-decoration: none;
+    }
+
+    .brand-logo {
+      width: 38px;
+      height: 38px;
+      border-radius: 10px;
+      background: linear-gradient(135deg, #00F0FF, #3B82F6);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      box-shadow: 0 0 16px var(--cyan-glow);
+    }
+
+    .brand-logo svg {
+      width: 22px;
+      height: 22px;
+      color: #060913;
+    }
+
+    .brand-name {
+      font-size: 20px;
       font-weight: 800;
-      margin-bottom: 4px;
-      background: linear-gradient(135deg, #3B82F6, #8B5CF6);
+      letter-spacing: -0.5px;
+      background: linear-gradient(135deg, #FFFFFF 40%, var(--cyan) 100%);
       -webkit-background-clip: text;
       -webkit-text-fill-color: transparent;
     }
-    .subtitle { color: #64748B; font-size: 14px; margin-bottom: 32px; }
 
-    /* Status */
-    .status-bar {
-      display: flex; gap: 16px; margin-bottom: 24px; align-items: center;
-    }
-    .status-dot {
-      width: 10px; height: 10px; border-radius: 50%;
-      display: inline-block; margin-right: 6px;
-    }
-    .status-dot.green { background: #22C55E; box-shadow: 0 0 8px #22C55E; }
-    .status-dot.red { background: #EF4444; }
-    .status-dot.yellow { background: #F59E0B; animation: pulse 1.5s infinite; }
-    @keyframes pulse { 0%,100% { opacity: 1; } 50% { opacity: 0.4; } }
-
-    .status-label { font-size: 13px; color: #94A3B8; }
-
-    /* Join form */
-    .join-card {
-      background: rgba(255,255,255,0.04);
-      border: 1px solid rgba(255,255,255,0.08);
-      border-radius: 16px;
-      padding: 32px;
-      width: 100%;
-      max-width: 480px;
-      text-align: center;
-      backdrop-filter: blur(12px);
-    }
-    .join-card h2 { font-size: 18px; margin-bottom: 20px; font-weight: 600; }
-
-    .code-input {
-      background: rgba(255,255,255,0.06);
-      border: 1px solid rgba(255,255,255,0.12);
-      border-radius: 12px;
-      padding: 16px;
-      font-size: 28px;
-      font-family: 'SF Mono', 'Courier New', monospace;
-      letter-spacing: 12px;
-      text-align: center;
-      color: #E2E8F0;
-      width: 100%;
-      outline: none;
+    .brand-tag {
+      font-size: 11px;
+      font-weight: 600;
       text-transform: uppercase;
-      transition: border-color 0.2s;
+      letter-spacing: 1.5px;
+      color: var(--cyan);
+      background: rgba(0, 240, 255, 0.1);
+      padding: 3px 8px;
+      border-radius: 6px;
+      border: 1px solid rgba(0, 240, 255, 0.2);
     }
-    .code-input:focus { border-color: #3B82F6; }
-    .code-input::placeholder { letter-spacing: 4px; font-size: 16px; color: #475569; }
 
-    .join-btn {
-      background: linear-gradient(135deg, #3B82F6, #2563EB);
-      color: white;
-      border: none;
-      border-radius: 12px;
-      padding: 14px 32px;
-      font-size: 16px;
-      font-weight: 600;
-      cursor: pointer;
+    .nav-status {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+    }
+
+    .status-chip {
+      display: flex;
+      align-items: center;
+      gap: 7px;
+      font-size: 12px;
+      font-family: 'JetBrains Mono', monospace;
+      padding: 6px 12px;
+      border-radius: 20px;
+      background: rgba(255, 255, 255, 0.03);
+      border: 1px solid var(--border-subtle);
+    }
+
+    .status-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: var(--text-dim);
+      transition: all 0.3s;
+    }
+    .status-dot.green { background: var(--emerald); box-shadow: 0 0 8px var(--emerald); }
+    .status-dot.cyan { background: var(--cyan); box-shadow: 0 0 8px var(--cyan); }
+    .status-dot.red { background: var(--red); box-shadow: 0 0 8px var(--red); }
+    .status-dot.yellow { background: var(--amber); animation: pulse 1.5s infinite; }
+
+    @keyframes pulse {
+      0%, 100% { opacity: 1; transform: scale(1); }
+      50% { opacity: 0.4; transform: scale(0.9); }
+    }
+
+    /* ─── Hero / Join Section ───────────────────────────────────── */
+    .join-container {
       width: 100%;
-      margin-top: 16px;
-      transition: transform 0.15s, opacity 0.15s;
-    }
-    .join-btn:hover { transform: translateY(-1px); }
-    .join-btn:active { transform: translateY(0); opacity: 0.9; }
-    .join-btn:disabled { opacity: 0.4; cursor: not-allowed; transform: none; }
-
-    .disconnect-btn {
-      background: linear-gradient(135deg, #EF4444, #DC2626);
-      color: white;
-      border: none;
-      border-radius: 12px;
-      padding: 12px 28px;
-      font-size: 15px;
-      font-weight: 600;
-      cursor: pointer;
-      margin-top: 16px;
-      transition: transform 0.15s;
-    }
-    .disconnect-btn:hover { transform: translateY(-1px); }
-
-    /* Video */
-    .video-container {
-      width: 100%;
-      max-width: 800px;
-      border-radius: 16px;
+      max-width: 520px;
+      background: var(--bg-surface);
+      border: 1px solid var(--border-subtle);
+      border-radius: 24px;
+      padding: 36px 32px;
+      text-align: center;
+      backdrop-filter: blur(20px);
+      box-shadow: 0 16px 48px rgba(0, 0, 0, 0.5);
+      position: relative;
       overflow: hidden;
-      background: #000;
-      border: 1px solid rgba(255,255,255,0.08);
+      margin-top: 20px;
+      transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+
+    .join-container::before {
+      content: '';
+      position: absolute;
+      top: 0; left: 0; right: 0;
+      height: 2px;
+      background: linear-gradient(90deg, transparent, var(--cyan), transparent);
+    }
+
+    .join-icon {
+      width: 64px;
+      height: 64px;
+      border-radius: 20px;
+      background: rgba(0, 240, 255, 0.08);
+      border: 1px solid rgba(0, 240, 255, 0.2);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin: 0 auto 20px;
+      color: var(--cyan);
+      box-shadow: 0 0 24px rgba(0, 240, 255, 0.15);
+    }
+
+    .join-title {
+      font-size: 24px;
+      font-weight: 700;
+      letter-spacing: -0.5px;
+      margin-bottom: 8px;
+    }
+
+    .join-desc {
+      font-size: 14px;
+      color: var(--text-muted);
+      margin-bottom: 28px;
+      line-height: 1.5;
+    }
+
+    .input-wrapper {
       position: relative;
       margin-bottom: 16px;
     }
-    video {
+
+    .code-input {
       width: 100%;
-      display: block;
-      background: #000;
-    }
-    .video-overlay {
-      position: absolute;
-      top: 12px; left: 12px;
-      display: flex; gap: 8px;
-    }
-    .live-badge {
-      background: rgba(239, 68, 68, 0.9);
-      color: white;
-      padding: 4px 12px;
-      border-radius: 20px;
-      font-size: 12px;
+      background: rgba(0, 0, 0, 0.35);
+      border: 2px solid rgba(255, 255, 255, 0.1);
+      border-radius: 16px;
+      padding: 16px 20px;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 28px;
       font-weight: 700;
-      letter-spacing: 1px;
-      animation: pulse 2s infinite;
-    }
-    .room-badge {
-      background: rgba(17,24,39,0.8);
-      color: #94A3B8;
-      padding: 4px 12px;
-      border-radius: 20px;
-      font-size: 12px;
-      font-weight: 500;
-      backdrop-filter: blur(8px);
+      letter-spacing: 12px;
+      text-align: center;
+      color: #FFFFFF;
+      text-transform: uppercase;
+      outline: none;
+      transition: all 0.25s;
     }
 
-    .waiting {
+    .code-input:focus {
+      border-color: var(--cyan);
+      box-shadow: 0 0 20px var(--cyan-glow);
+      background: rgba(0, 0, 0, 0.5);
+    }
+
+    .code-input::placeholder {
+      letter-spacing: 3px;
+      font-size: 15px;
+      color: var(--text-dim);
+      font-weight: 500;
+    }
+
+    .btn-primary {
+      width: 100%;
+      background: linear-gradient(135deg, #00F0FF, #0077FF);
+      color: #060913;
+      border: none;
+      border-radius: 14px;
+      padding: 16px;
+      font-size: 16px;
+      font-weight: 700;
+      letter-spacing: 0.5px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 10px;
+      transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+      box-shadow: 0 4px 20px rgba(0, 240, 255, 0.3);
+    }
+
+    .btn-primary:hover:not(:disabled) {
+      transform: translateY(-2px);
+      box-shadow: 0 8px 30px rgba(0, 240, 255, 0.45);
+      filter: brightness(1.1);
+    }
+
+    .btn-primary:active:not(:disabled) {
+      transform: translateY(0);
+      filter: brightness(0.95);
+    }
+
+    .btn-primary:disabled {
+      opacity: 0.35;
+      cursor: not-allowed;
+      box-shadow: none;
+      filter: grayscale(1);
+    }
+
+    .btn-wake {
+      width: 100%;
+      background: rgba(245, 158, 11, 0.12);
+      border: 1px solid rgba(245, 158, 11, 0.3);
+      color: #FBBF24;
+      border-radius: 14px;
+      padding: 14px;
+      font-size: 14px;
+      font-weight: 600;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      margin-top: 12px;
+      transition: all 0.2s;
+    }
+
+    .btn-wake:hover {
+      background: rgba(245, 158, 11, 0.2);
+      border-color: rgba(245, 158, 11, 0.6);
+      transform: translateY(-1px);
+    }
+
+    .recent-rooms {
+      margin-top: 24px;
+      padding-top: 20px;
+      border-top: 1px solid var(--border-subtle);
+      text-align: left;
+    }
+
+    .recent-title {
+      font-size: 11px;
+      text-transform: uppercase;
+      letter-spacing: 1.5px;
+      color: var(--text-dim);
+      font-weight: 700;
+      margin-bottom: 12px;
+    }
+
+    .chips-wrap {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+    }
+
+    .room-chip {
+      background: rgba(255, 255, 255, 0.04);
+      border: 1px solid var(--border-subtle);
+      color: var(--text-main);
+      padding: 6px 12px;
+      border-radius: 8px;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 12px;
+      font-weight: 600;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      transition: all 0.15s;
+    }
+
+    .room-chip:hover {
+      background: rgba(0, 240, 255, 0.1);
+      border-color: rgba(0, 240, 255, 0.3);
+      color: var(--cyan);
+    }
+
+    /* ─── Video & Stream Viewport ───────────────────────────────── */
+    .stream-viewport {
+      width: 100%;
+      max-width: 960px;
+      display: none;
+      flex-direction: column;
+      gap: 16px;
+      animation: fadeIn 0.4s ease-out;
+    }
+
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(12px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    .video-card {
+      position: relative;
       width: 100%;
       aspect-ratio: 16/9;
+      background: #000;
+      border-radius: 20px;
+      overflow: hidden;
+      border: 1px solid var(--border-subtle);
+      box-shadow: 0 20px 50px rgba(0, 0, 0, 0.6);
+    }
+
+    video#remoteVideo {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      display: block;
+      transform-origin: center center;
+      transition: transform 0.3s ease;
+    }
+
+    /* Tactical HUD Overlays */
+    .hud-top {
+      position: absolute;
+      top: 16px;
+      left: 16px;
+      right: 16px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      pointer-events: none;
+      z-index: 10;
+    }
+
+    .hud-group {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      pointer-events: auto;
+    }
+
+    .badge-live {
+      background: rgba(239, 68, 68, 0.85);
+      color: #FFFFFF;
+      font-size: 11px;
+      font-weight: 800;
+      letter-spacing: 1px;
+      padding: 5px 12px;
+      border-radius: 20px;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      backdrop-filter: blur(8px);
+      box-shadow: 0 0 12px rgba(239, 68, 68, 0.4);
+    }
+
+    .badge-live::before {
+      content: '';
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+      background: #FFF;
+      animation: pulse 1.2s infinite;
+    }
+
+    .badge-tactical {
+      background: rgba(15, 23, 42, 0.8);
+      color: var(--text-main);
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 12px;
+      font-weight: 600;
+      padding: 5px 12px;
+      border-radius: 20px;
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      backdrop-filter: blur(8px);
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      cursor: pointer;
+      user-select: none;
+      transition: all 0.2s;
+    }
+
+    .badge-tactical:hover {
+      background: rgba(15, 23, 42, 0.95);
+      border-color: var(--cyan);
+    }
+
+    .badge-battery {
+      color: var(--emerald);
+    }
+
+    .badge-battery.charging {
+      color: var(--cyan);
+    }
+
+    .badge-battery.low {
+      color: var(--red);
+      animation: pulse 1.5s infinite;
+    }
+
+    /* Zoom Overlay */
+    .hud-zoom {
+      position: absolute;
+      top: 64px;
+      right: 16px;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      z-index: 10;
+    }
+
+    .zoom-btn {
+      background: rgba(15, 23, 42, 0.7);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      color: var(--text-muted);
+      width: 36px;
+      height: 36px;
+      border-radius: 10px;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 11px;
+      font-weight: 700;
+      cursor: pointer;
+      backdrop-filter: blur(8px);
+      transition: all 0.15s;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .zoom-btn:hover {
+      background: rgba(30, 41, 59, 0.9);
+      color: #FFF;
+      border-color: var(--cyan);
+    }
+
+    .zoom-btn.active {
+      background: rgba(0, 240, 255, 0.2);
+      color: var(--cyan);
+      border-color: var(--cyan);
+      box-shadow: 0 0 10px var(--cyan-glow);
+    }
+
+    /* Bottom Telemetry Overlay inside video */
+    .hud-bottom {
+      position: absolute;
+      bottom: 16px;
+      left: 16px;
+      right: 16px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      pointer-events: none;
+      z-index: 10;
+    }
+
+    .telemetry-tag {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 11px;
+      color: rgba(255, 255, 255, 0.75);
+      background: rgba(0, 0, 0, 0.6);
+      padding: 4px 10px;
+      border-radius: 6px;
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      backdrop-filter: blur(6px);
+    }
+
+    /* Waiting / Offline Overlay */
+    .waiting-overlay {
+      position: absolute;
+      inset: 0;
+      background: rgba(6, 9, 19, 0.94);
       display: flex;
       flex-direction: column;
       align-items: center;
       justify-content: center;
-      color: #64748B;
-      font-size: 16px;
+      z-index: 20;
+      padding: 24px;
+      text-align: center;
     }
-    .waiting-icon { font-size: 48px; margin-bottom: 12px; }
 
-    /* Logs */
-    .log-card {
-      background: rgba(255,255,255,0.02);
-      border: 1px solid rgba(255,255,255,0.06);
-      border-radius: 12px;
-      padding: 16px;
-      width: 100%;
-      max-width: 800px;
-      margin-top: 24px;
+    .radar-spinner {
+      position: relative;
+      width: 90px;
+      height: 90px;
+      border-radius: 50%;
+      border: 2px dashed rgba(0, 240, 255, 0.3);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin-bottom: 24px;
+      animation: rotate 8s linear infinite;
     }
-    .log-card h3 { font-size: 13px; color: #64748B; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 8px; }
-    #logs {
-      font-family: 'SF Mono', 'Courier New', monospace;
+
+    .radar-spinner::after {
+      content: '';
+      position: absolute;
+      inset: 8px;
+      border-radius: 50%;
+      border: 2px solid transparent;
+      border-top-color: var(--cyan);
+      animation: rotate 1.8s cubic-bezier(0.5, 0, 0.5, 1) infinite;
+    }
+
+    .radar-icon {
+      color: var(--cyan);
+      animation: pulse 2s infinite;
+    }
+
+    @keyframes rotate {
+      from { transform: rotate(0deg); }
+      to { transform: rotate(360deg); }
+    }
+
+    .waiting-title {
+      font-size: 18px;
+      font-weight: 700;
+      margin-bottom: 8px;
+      letter-spacing: -0.3px;
+    }
+
+    .waiting-sub {
+      font-size: 13px;
+      color: var(--text-muted);
+      max-width: 380px;
+      line-height: 1.5;
+      margin-bottom: 20px;
+    }
+
+    /* ─── Control Dock ──────────────────────────────────────────── */
+    .control-dock {
+      background: var(--bg-surface);
+      border: 1px solid var(--border-subtle);
+      border-radius: 20px;
+      padding: 14px 20px;
+      backdrop-filter: blur(16px);
+      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.4);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      flex-wrap: wrap;
+    }
+
+    .dock-group {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .action-btn {
+      background: rgba(255, 255, 255, 0.04);
+      border: 1px solid var(--border-subtle);
+      color: var(--text-main);
+      padding: 10px 16px;
+      border-radius: 12px;
+      font-size: 13px;
+      font-weight: 600;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+
+    .action-btn svg {
+      width: 17px;
+      height: 17px;
+      flex-shrink: 0;
+    }
+
+    .action-btn:hover {
+      background: rgba(255, 255, 255, 0.1);
+      border-color: rgba(255, 255, 255, 0.2);
+      transform: translateY(-1px);
+    }
+
+    .action-btn:active {
+      transform: translateY(0);
+    }
+
+    .action-btn.active-cyan {
+      background: rgba(0, 240, 255, 0.15);
+      border-color: var(--cyan);
+      color: var(--cyan);
+      box-shadow: 0 0 14px var(--cyan-glow);
+    }
+
+    .action-btn.active-amber {
+      background: rgba(245, 158, 11, 0.2);
+      border-color: var(--amber);
+      color: #FCD34D;
+      box-shadow: 0 0 14px rgba(245, 158, 11, 0.3);
+    }
+
+    .action-btn.active-rec {
+      background: rgba(239, 68, 68, 0.25);
+      border-color: var(--red);
+      color: #FCA5A5;
+      animation: pulse 1.2s infinite;
+      box-shadow: 0 0 16px rgba(239, 68, 68, 0.4);
+    }
+
+    .action-btn.danger {
+      background: rgba(239, 68, 68, 0.12);
+      border-color: rgba(239, 68, 68, 0.3);
+      color: #F87171;
+    }
+    .action-btn.danger:hover {
+      background: rgba(239, 68, 68, 0.25);
+      border-color: var(--red);
+    }
+
+    /* Audio visualizer wave inside talk button */
+    .audio-wave {
+      display: inline-flex;
+      align-items: center;
+      gap: 2px;
+      height: 14px;
+    }
+    .wave-bar {
+      width: 3px;
+      height: 100%;
+      background: currentColor;
+      border-radius: 2px;
+      animation: wave 0.8s ease-in-out infinite alternate;
+    }
+    .wave-bar:nth-child(2) { animation-delay: 0.2s; height: 60%; }
+    .wave-bar:nth-child(3) { animation-delay: 0.4s; height: 80%; }
+
+    @keyframes wave {
+      from { transform: scaleY(0.3); }
+      to { transform: scaleY(1); }
+    }
+
+    /* Volume Slider */
+    .vol-container {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      background: rgba(0, 0, 0, 0.25);
+      border: 1px solid var(--border-subtle);
+      padding: 6px 12px;
+      border-radius: 12px;
+    }
+
+    .vol-slider {
+      -webkit-appearance: none;
+      width: 70px;
+      height: 4px;
+      border-radius: 2px;
+      background: rgba(255, 255, 255, 0.15);
+      outline: none;
+      cursor: pointer;
+    }
+    .vol-slider::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      width: 14px;
+      height: 14px;
+      border-radius: 50%;
+      background: var(--cyan);
+      box-shadow: 0 0 6px var(--cyan);
+      cursor: pointer;
+    }
+
+    /* ─── Gallery Strip ─────────────────────────────────────────── */
+    .gallery-section {
+      width: 100%;
+      max-width: 960px;
+      display: none;
+      background: var(--bg-surface);
+      border: 1px solid var(--border-subtle);
+      border-radius: 18px;
+      padding: 16px 20px;
+      backdrop-filter: blur(16px);
+    }
+
+    .gallery-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 12px;
+    }
+
+    .gallery-title {
+      font-size: 13px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      color: var(--text-muted);
+    }
+
+    .gallery-strip {
+      display: flex;
+      gap: 12px;
+      overflow-x: auto;
+      padding-bottom: 6px;
+    }
+
+    .gallery-item {
+      position: relative;
+      flex-shrink: 0;
+      width: 120px;
+      height: 75px;
+      border-radius: 10px;
+      overflow: hidden;
+      border: 1px solid var(--border-subtle);
+      background: #000;
+      cursor: pointer;
+      transition: transform 0.2s;
+    }
+    .gallery-item:hover {
+      transform: scale(1.04);
+      border-color: var(--cyan);
+    }
+    .gallery-item img, .gallery-item video {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+    }
+
+    /* ─── Tactical Log Terminal ─────────────────────────────────── */
+    .log-card {
+      width: 100%;
+      max-width: 960px;
+      background: var(--bg-surface);
+      border: 1px solid var(--border-subtle);
+      border-radius: 18px;
+      padding: 16px 20px;
+      backdrop-filter: blur(16px);
+      margin-top: 16px;
+    }
+
+    .log-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 10px;
+      cursor: pointer;
+    }
+
+    .log-title {
       font-size: 12px;
-      color: #94A3B8;
-      max-height: 200px;
+      font-weight: 700;
+      letter-spacing: 1.5px;
+      text-transform: uppercase;
+      color: var(--text-dim);
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    #logs {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 11px;
+      color: var(--text-muted);
+      max-height: 150px;
       overflow-y: auto;
       line-height: 1.6;
-    }
-    .log-success { color: #22C55E; }
-    .log-error { color: #EF4444; }
-    .log-info { color: #3B82F6; }
-
-    .ctrl-btn {
-      background: rgba(255,255,255,0.06);
-      border: 1px solid rgba(255,255,255,0.12);
-      color: #E2E8F0;
+      background: rgba(0, 0, 0, 0.35);
+      border: 1px solid rgba(255, 255, 255, 0.04);
       border-radius: 10px;
-      padding: 10px 20px;
-      font-size: 14px;
-      font-weight: 500;
-      cursor: pointer;
-      transition: all 0.2s;
+      padding: 10px 14px;
     }
-    .ctrl-btn:hover { background: rgba(255,255,255,0.12); border-color: #3B82F6; }
-    .ctrl-btn.active { background: rgba(59,130,246,0.2); border-color: #3B82F6; color: #3B82F6; }
+
+    .log-entry { margin-bottom: 2px; }
+    .log-ok { color: var(--emerald); }
+    .log-err { color: var(--red); }
+    .log-warn { color: var(--amber); }
+    .log-info { color: var(--cyan); }
+    .log-time { color: var(--text-dim); }
+
+    /* Flash screen effect on snapshot */
+    .flash-overlay {
+      position: fixed;
+      inset: 0;
+      background: #FFF;
+      opacity: 0;
+      pointer-events: none;
+      z-index: 9999;
+      transition: opacity 0.15s ease-out;
+    }
   </style>
 </head>
 <body>
-  <h1>📹 Smart CCTV</h1>
-  <p class="subtitle">Web Viewer — Watch your camera stream from the browser</p>
+  <div class="flash-overlay" id="flashOverlay"></div>
 
-  <div class="status-bar">
-    <span>
-      <span class="status-dot" id="socketDot"></span>
-      <span class="status-label" id="socketStatus">Disconnected</span>
-    </span>
-    <span>
-      <span class="status-dot" id="webrtcDot"></span>
-      <span class="status-label" id="webrtcStatus">No stream</span>
-    </span>
-  </div>
+  <!-- ─── Navbar ──────────────────────────────────────────────── -->
+  <nav class="navbar">
+    <div class="brand">
+      <div class="brand-logo">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
+          <circle cx="12" cy="11" r="3"/>
+        </svg>
+      </div>
+      <div>
+        <div style="display:flex; align-items:center; gap:8px;">
+          <span class="brand-name">VIGILIX</span>
+          <span class="brand-tag">COMMAND</span>
+        </div>
+      </div>
+    </div>
 
-  <!-- Join form -->
-  <div id="joinSection" class="join-card">
-    <h2>🔗 Connect to Camera</h2>
-    <input type="text" id="codeInput" class="code-input" placeholder="Room Code" maxlength="6" autocomplete="off">
-    <button id="joinBtn" class="join-btn" disabled>Connect</button>
-  </div>
+    <div class="nav-status">
+      <div class="status-chip" title="Signaling Server Connection">
+        <span class="status-dot" id="socketDot"></span>
+        <span id="socketText">Connecting...</span>
+      </div>
+      <div class="status-chip" id="clockDisplay" style="display:none;">00:00:00</div>
+    </div>
+  </nav>
 
-  <!-- Video section (hidden initially) -->
-  <div id="videoSection" style="display:none; width:100%; max-width:800px; text-align:center;">
-    <div class="video-container" id="videoContainer">
+  <!-- ─── Join Section ────────────────────────────────────────── -->
+  <main class="join-container" id="joinSection">
+    <div class="join-icon">
+      <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M23 7l-7 5 7 5V7z"/>
+        <rect x="1" y="5" width="15" height="14" rx="2" ry="2"/>
+      </svg>
+    </div>
+    <h1 class="join-title">Connect to Camera</h1>
+    <p class="join-desc">Enter the 6-character room code displayed on your Vigilix camera device to start live ultra-low latency monitoring.</p>
+
+    <div class="input-wrapper">
+      <input type="text" id="codeInput" class="code-input" placeholder="ROOM CODE" maxlength="6" autocomplete="off" spellcheck="false">
+    </div>
+
+    <button id="joinBtn" class="btn-primary" disabled>
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+        <polygon points="5 3 19 12 5 21 5 3"/>
+      </svg>
+      <span>Connect Stream</span>
+    </button>
+
+    <button id="wakeBtn" class="btn-wake" style="display:none;">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M4.93 4.93a10 10 0 0 1 14.14 0"/>
+        <path d="M7.76 7.76a6 6 0 0 1 8.48 0"/>
+        <circle cx="12" cy="12" r="2"/>
+      </svg>
+      <span id="wakeBtnText">Camera Offline? Send Wake Signal</span>
+    </button>
+
+    <div class="recent-rooms" id="recentRoomsSection" style="display:none;">
+      <div class="recent-title">Recent Camera Feeds</div>
+      <div class="chips-wrap" id="recentChips"></div>
+    </div>
+  </main>
+
+  <!-- ─── Live Stream Viewport ─────────────────────────────────── -->
+  <section class="stream-viewport" id="streamViewport">
+    <div class="video-card" id="videoContainer">
       <video id="remoteVideo" autoplay playsinline></video>
-      <div class="video-overlay">
-        <span class="live-badge">● LIVE</span>
-        <span class="room-badge" id="roomBadge"></span>
-        <span class="room-badge" id="batteryBadge" style="display:none"></span>
+
+      <!-- HUD Top -->
+      <div class="hud-top">
+        <div class="hud-group">
+          <div class="badge-live">LIVE</div>
+          <div class="badge-tactical" id="roomBadge" title="Click to copy code">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <rect x="9" y="9" width="13" height="13" rx="2" ry="2"/>
+              <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/>
+            </svg>
+            <span id="roomCodeText">ROOM: ----</span>
+          </div>
+          <div class="badge-tactical" id="timerBadge">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+            <span id="streamTimer">00:00</span>
+          </div>
+        </div>
+
+        <div class="hud-group">
+          <div class="badge-tactical" id="qualityBadge" title="Connection Quality">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M1.42 9a16 16 0 0 1 21.16 0"/>
+              <path d="M5 12.55a11 11 0 0 1 14.08 0"/>
+              <path d="M8.53 16.11a6 6 0 0 1 6.95 0"/>
+              <line x1="12" y1="20" x2="12.01" y2="20"/>
+            </svg>
+            <span id="qualityText">EXCELLENT</span>
+          </div>
+          <div class="badge-tactical badge-battery" id="batteryBadge" style="display:none;">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <rect x="1" y="6" width="18" height="12" rx="2" ry="2"/>
+              <line x1="23" y1="13" x2="23" y2="11"/>
+            </svg>
+            <span id="batteryText">--%</span>
+          </div>
+        </div>
       </div>
-      <div class="waiting" id="waitingOverlay">
-        <span class="waiting-icon">📡</span>
-        <span>Waiting for camera stream...</span>
+
+      <!-- Digital Zoom Overlay -->
+      <div class="hud-zoom">
+        <button class="zoom-btn active" data-zoom="1">1x</button>
+        <button class="zoom-btn" data-zoom="1.5">1.5x</button>
+        <button class="zoom-btn" data-zoom="2">2x</button>
+        <button class="zoom-btn" data-zoom="3">3x</button>
+      </div>
+
+      <!-- HUD Bottom inside video -->
+      <div class="hud-bottom">
+        <div class="telemetry-tag" id="resolutionTag">1080p • 30 FPS</div>
+        <div class="telemetry-tag" id="bitrateTag">WebRTC Peer-to-Peer</div>
+      </div>
+
+      <!-- Waiting / Offline State Overlay -->
+      <div class="waiting-overlay" id="waitingOverlay">
+        <div class="radar-spinner">
+          <div class="radar-icon">
+            <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M23 7l-7 5 7 5V7z"/>
+              <rect x="1" y="5" width="15" height="14" rx="2" ry="2"/>
+            </svg>
+          </div>
+        </div>
+        <div class="waiting-title" id="waitingTitle">Connecting to Camera Device...</div>
+        <div class="waiting-sub" id="waitingSub">Exchanging WebRTC SDP offer and encrypted ICE candidates over secure signaling channel.</div>
+        <button class="btn-wake" id="overlayWakeBtn" style="max-width:300px;">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4.93 4.93a10 10 0 0 1 14.14 0"/><path d="M7.76 7.76a6 6 0 0 1 8.48 0"/><circle cx="12" cy="12" r="2"/></svg>
+          <span id="overlayWakeText">Wake Camera via Push</span>
+        </button>
       </div>
     </div>
 
-    <!-- Controls -->
-    <div style="display:flex; gap:12px; justify-content:center; margin: 12px 0; flex-wrap:wrap;">
-      <button class="ctrl-btn" id="talkBtn" title="Talk Back">🎙️ Talk</button>
-      <button class="ctrl-btn" id="flashBtn" title="Toggle Flash">🔦 Flash</button>
-      <button class="ctrl-btn" id="screenshotBtn" title="Take Screenshot">📸 Screenshot</button>
-      <button class="ctrl-btn" id="fullscreenBtn" title="Fullscreen">⛶ Fullscreen</button>
+    <!-- ─── Control Dock ────────────────────────────────────────── -->
+    <div class="control-dock">
+      <!-- Media Controls -->
+      <div class="dock-group">
+        <!-- Mic (Talk Back) -->
+        <button class="action-btn" id="talkBtn" title="Hold or Click to Talk">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/>
+            <path d="M19 10v2a7 7 0 0 1-14 0v-2"/>
+            <line x1="12" y1="19" x2="12" y2="23"/>
+            <line x1="8" y1="23" x2="16" y2="23"/>
+          </svg>
+          <span id="talkBtnText">Talk</span>
+          <span class="audio-wave" id="audioWave" style="display:none;">
+            <span class="wave-bar"></span><span class="wave-bar"></span><span class="wave-bar"></span>
+          </span>
+        </button>
+
+        <!-- Flash / Torch -->
+        <button class="action-btn" id="flashBtn" title="Toggle Camera Torch">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/>
+          </svg>
+          <span id="flashBtnText">Flash</span>
+        </button>
+
+        <!-- Camera Switch -->
+        <button class="action-btn" id="switchCamBtn" title="Switch Front/Back Camera">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M20 10c0-4.4-3.6-8-8-8s-8 3.6-8 8h-3l4 4 4-4h-3c0-3.3 2.7-6 6-6s6 2.7 6 6-2.7 6-6 6c-1.7 0-3.2-.7-4.2-1.8l-1.4 1.4c1.4 1.5 3.4 2.4 5.6 2.4 4.4 0 8-3.6 8-8z"/>
+          </svg>
+          <span>Switch</span>
+        </button>
+      </div>
+
+      <!-- Capture Controls -->
+      <div class="dock-group">
+        <!-- Snapshot -->
+        <button class="action-btn" id="snapBtn" title="Capture High-Res Photo">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/>
+            <circle cx="12" cy="13" r="4"/>
+          </svg>
+          <span>Photo</span>
+        </button>
+
+        <!-- Record Video -->
+        <button class="action-btn" id="recordBtn" title="Record Clip">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="12" cy="12" r="10"/>
+            <circle cx="12" cy="12" r="4" fill="currentColor"/>
+          </svg>
+          <span id="recordBtnText">Record</span>
+        </button>
+
+        <!-- Speaker Volume Slider -->
+        <div class="vol-container" title="Audio Output Boost (0% - 200%)">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/>
+            <path d="M19.07 4.93a10 10 0 0 1 0 14.14M15.54 8.46a5 5 0 0 1 0 7.07"/>
+          </svg>
+          <input type="range" id="volSlider" class="vol-slider" min="0" max="2" step="0.1" value="1.2">
+        </div>
+      </div>
+
+      <!-- Viewport & Disconnect -->
+      <div class="dock-group">
+        <button class="action-btn" id="pipBtn" title="Picture in Picture">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <rect x="2" y="3" width="20" height="14" rx="2" ry="2"/>
+            <rect x="12" y="9" width="8" height="6" rx="1"/>
+          </svg>
+        </button>
+
+        <button class="action-btn" id="fullscreenBtn" title="Fullscreen">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3"/>
+          </svg>
+        </button>
+
+        <button class="action-btn danger" id="disconnectBtn" title="End Session">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M18.36 6.64a9 9 0 1 1-12.73 0"/>
+            <line x1="12" y1="2" x2="12" y2="12"/>
+          </svg>
+          <span>Disconnect</span>
+        </button>
+      </div>
     </div>
 
-    <button class="disconnect-btn" id="disconnectBtn">⏹ Disconnect</button>
-  </div>
+    <!-- ─── Gallery Strip ───────────────────────────────────────── -->
+    <div class="gallery-section" id="gallerySection">
+      <div class="gallery-header">
+        <div class="gallery-title">Session Captures</div>
+        <span style="font-size:12px; color:var(--text-dim);" id="galleryCount">0 items</span>
+      </div>
+      <div class="gallery-strip" id="galleryStrip"></div>
+    </div>
+  </section>
 
-  <!-- Logs -->
-  <div class="log-card">
-    <h3>Connection Log</h3>
+  <!-- ─── Event Log Terminal ──────────────────────────────────── -->
+  <aside class="log-card">
+    <div class="log-header" id="logToggle">
+      <div class="log-title">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="4 17 10 11 4 5"/><line x1="12" y1="19" x2="20" y2="19"/></svg>
+        <span>Telemetry & Signaling Terminal</span>
+      </div>
+      <button style="background:none; border:none; color:var(--text-dim); font-size:11px; cursor:pointer;" id="clearLogBtn">Clear</button>
+    </div>
     <div id="logs"></div>
-  </div>
+  </aside>
 
-  <!-- Socket.IO Client -->
+  <!-- Socket.IO -->
   <script src="https://cdn.socket.io/4.7.5/socket.io.min.js"></script>
   <script>
-    // ─── Config ──────────────────────────────────────────────
-    // Auto-detect: viewer.html is served by the same server
+    // ─── Configuration ─────────────────────────────────────────
     const SERVER_URL = window.location.origin;
-
     const ICE_CONFIG = {
       iceServers: [
         { urls: 'stun:stun.l.google.com:19302' },
         { urls: 'stun:stun1.l.google.com:19302' },
+        { urls: 'stun:stun2.l.google.com:19302' }
       ]
     };
 
-    // ─── DOM Elements ────────────────────────────────────────
-    const codeInput = document.getElementById('codeInput');
-    const joinBtn = document.getElementById('joinBtn');
-    const joinSection = document.getElementById('joinSection');
-    const videoSection = document.getElementById('videoSection');
-    const remoteVideo = document.getElementById('remoteVideo');
-    const roomBadge = document.getElementById('roomBadge');
-    const waitingOverlay = document.getElementById('waitingOverlay');
-    const disconnectBtn = document.getElementById('disconnectBtn');
-    const socketDot = document.getElementById('socketDot');
-    const socketStatus = document.getElementById('socketStatus');
-    const webrtcDot = document.getElementById('webrtcDot');
-    const webrtcStatus = document.getElementById('webrtcStatus');
-    const logsDiv = document.getElementById('logs');
-
-    // ─── State ───────────────────────────────────────────────
+    // ─── State ─────────────────────────────────────────────────
     let socket = null;
     let peerConnection = null;
     let currentRoomCode = null;
     let localMicStream = null;
     let talkOn = false;
     let flashOn = false;
+    let currentCamera = 'back';
+    let pendingICECandidates = [];
+    let mediaRecorder = null;
+    let recordedChunks = [];
+    let recordingStartTime = 0;
+    let recordInterval = null;
+    let streamStartTime = null;
+    let streamTimerInterval = null;
+    let audioContext = null;
+    let gainNode = null;
+    let wakeCooldownTimer = null;
 
-    // ─── Logging ─────────────────────────────────────────────
-    function log(msg, type = '') {
-      const time = new Date().toLocaleTimeString();
-      const cls = type === 'ok' ? 'log-success' : type === 'err' ? 'log-error' : 'log-info';
-      logsDiv.innerHTML += `<div class="${cls}">[${time}] ${msg}</div>`;
+    // ─── DOM References ────────────────────────────────────────
+    const codeInput = document.getElementById('codeInput');
+    const joinBtn = document.getElementById('joinBtn');
+    const wakeBtn = document.getElementById('wakeBtn');
+    const wakeBtnText = document.getElementById('wakeBtnText');
+    const overlayWakeBtn = document.getElementById('overlayWakeBtn');
+    const overlayWakeText = document.getElementById('overlayWakeText');
+    const joinSection = document.getElementById('joinSection');
+    const streamViewport = document.getElementById('streamViewport');
+    const videoContainer = document.getElementById('videoContainer');
+    const remoteVideo = document.getElementById('remoteVideo');
+    const waitingOverlay = document.getElementById('waitingOverlay');
+    const waitingTitle = document.getElementById('waitingTitle');
+    const waitingSub = document.getElementById('waitingSub');
+    const socketDot = document.getElementById('socketDot');
+    const socketText = document.getElementById('socketText');
+    const roomBadge = document.getElementById('roomBadge');
+    const roomCodeText = document.getElementById('roomCodeText');
+    const batteryBadge = document.getElementById('batteryBadge');
+    const batteryText = document.getElementById('batteryText');
+    const timerBadge = document.getElementById('timerBadge');
+    const streamTimer = document.getElementById('streamTimer');
+    const qualityText = document.getElementById('qualityText');
+    const resolutionTag = document.getElementById('resolutionTag');
+    const bitrateTag = document.getElementById('bitrateTag');
+    const talkBtn = document.getElementById('talkBtn');
+    const talkBtnText = document.getElementById('talkBtnText');
+    const audioWave = document.getElementById('audioWave');
+    const flashBtn = document.getElementById('flashBtn');
+    const flashBtnText = document.getElementById('flashBtnText');
+    const switchCamBtn = document.getElementById('switchCamBtn');
+    const snapBtn = document.getElementById('snapBtn');
+    const recordBtn = document.getElementById('recordBtn');
+    const recordBtnText = document.getElementById('recordBtnText');
+    const volSlider = document.getElementById('volSlider');
+    const pipBtn = document.getElementById('pipBtn');
+    const fullscreenBtn = document.getElementById('fullscreenBtn');
+    const disconnectBtn = document.getElementById('disconnectBtn');
+    const logsDiv = document.getElementById('logs');
+    const gallerySection = document.getElementById('gallerySection');
+    const galleryStrip = document.getElementById('galleryStrip');
+    const galleryCount = document.getElementById('galleryCount');
+    const recentRoomsSection = document.getElementById('recentRoomsSection');
+    const recentChips = document.getElementById('recentChips');
+    const flashOverlay = document.getElementById('flashOverlay');
+    const clockDisplay = document.getElementById('clockDisplay');
+
+    // ─── Clock ─────────────────────────────────────────────────
+    function updateClock() {
+      const now = new Date();
+      clockDisplay.textContent = now.toTimeString().split(' ')[0];
+      clockDisplay.style.display = 'block';
+    }
+    setInterval(updateClock, 1000);
+    updateClock();
+
+    // ─── Tactical Logger ───────────────────────────────────────
+    function log(msg, type = 'info') {
+      const time = new Date().toTimeString().split(' ')[0];
+      const entry = document.createElement('div');
+      entry.className = `log-entry log-${type}`;
+      entry.innerHTML = `<span class="log-time">[${time}]</span> ${msg}`;
+      logsDiv.appendChild(entry);
       logsDiv.scrollTop = logsDiv.scrollHeight;
-      console.log(`[WebViewer] ${msg}`);
+      console.log(`[Vigilix] ${msg}`);
     }
 
-    // ─── Socket ──────────────────────────────────────────────
+    document.getElementById('clearLogBtn').addEventListener('click', () => {
+      logsDiv.innerHTML = '';
+    });
+
+    // ─── Recent Rooms Persistence ──────────────────────────────
+    function loadRecentRooms() {
+      try {
+        const rooms = JSON.parse(localStorage.getItem('vigilix_recent_rooms') || '[]');
+        if (rooms.length > 0) {
+          recentChips.innerHTML = '';
+          rooms.slice(0, 5).forEach(code => {
+            const chip = document.createElement('button');
+            chip.className = 'room-chip';
+            chip.innerHTML = `<span>●</span> ${code}`;
+            chip.onclick = () => {
+              codeInput.value = code;
+              joinBtn.disabled = false;
+              joinBtn.click();
+            };
+            recentChips.appendChild(chip);
+          });
+          recentRoomsSection.style.display = 'block';
+        }
+      } catch (e) { /* ignore */ }
+    }
+
+    function saveRecentRoom(code) {
+      try {
+        let rooms = JSON.parse(localStorage.getItem('vigilix_recent_rooms') || '[]');
+        rooms = [code, ...rooms.filter(r => r !== code)].slice(0, 8);
+        localStorage.setItem('vigilix_recent_rooms', JSON.stringify(rooms));
+        loadRecentRooms();
+      } catch (e) { /* ignore */ }
+    }
+
+    loadRecentRooms();
+
+    // ─── Socket.IO Connection ──────────────────────────────────
     function connectSocket() {
-      log('Connecting to server: ' + SERVER_URL);
+      log('Establishing connection to signaling gateway: ' + SERVER_URL);
       socket = io(SERVER_URL, {
-        transports: ['polling', 'websocket'],
-        upgrade: true,
+        transports: ['websocket', 'polling'],
         reconnection: true,
-        timeout: 15000,
+        timeout: 10000,
       });
 
       socket.on('connect', () => {
-        log('✅ Socket connected! ID: ' + socket.id, 'ok');
+        log('Signaling uplink established. ID: ' + socket.id, 'ok');
         socketDot.className = 'status-dot green';
-        socketStatus.textContent = 'Connected';
+        socketText.textContent = 'ONLINE';
       });
 
       socket.on('disconnect', (reason) => {
-        log('❌ Socket disconnected: ' + reason, 'err');
+        log('Signaling uplink dropped: ' + reason, 'err');
         socketDot.className = 'status-dot red';
-        socketStatus.textContent = 'Disconnected';
+        socketText.textContent = 'OFFLINE';
       });
 
       socket.on('connect_error', (err) => {
-        log('❌ Connection error: ' + err.message, 'err');
+        log('Signaling error: ' + err.message, 'err');
         socketDot.className = 'status-dot red';
-        socketStatus.textContent = 'Error';
+        socketText.textContent = 'ERROR';
       });
 
-      // WebRTC: receive offer from camera
+      // WebRTC: receive camera offer
       socket.on('offer', async ({ sdp, senderSocketId }) => {
-        log('📥 Received offer from camera: ' + senderSocketId);
+        log('Received WebRTC SDP offer from camera node: ' + senderSocketId, 'info');
         await handleOffer(sdp, senderSocketId);
       });
 
       // WebRTC: receive ICE candidate
       socket.on('ice-candidate', async ({ candidate }) => {
-        if (peerConnection && candidate) {
+        if (!candidate) return;
+        if (peerConnection && peerConnection.remoteDescription) {
           try {
             await peerConnection.addIceCandidate(new RTCIceCandidate(candidate));
           } catch (e) {
-            log('ICE candidate error: ' + e.message, 'err');
+            log('ICE candidate rejected: ' + e.message, 'err');
           }
+        } else {
+          pendingICECandidates.push(candidate);
         }
       });
 
-      // Stream events
       socket.on('stream-started', () => {
-        log('📡 Camera started streaming', 'ok');
+        log('Camera node initialized video feed.', 'ok');
       });
 
       socket.on('stream-stopped', () => {
-        log('⏹ Camera stopped streaming', 'err');
+        log('Camera node halted streaming.', 'warn');
         waitingOverlay.style.display = 'flex';
-        webrtcDot.className = 'status-dot yellow';
-        webrtcStatus.textContent = 'Stream stopped';
+        waitingTitle.textContent = 'Stream Paused';
+        waitingSub.textContent = 'The camera device has temporarily suspended transmission.';
       });
 
       socket.on('camera-offline', () => {
-        log('📷 Camera went offline', 'err');
-        webrtcDot.className = 'status-dot red';
-        webrtcStatus.textContent = 'Camera offline';
+        log('Camera device disconnected from room.', 'err');
         waitingOverlay.style.display = 'flex';
-        waitingOverlay.querySelector('span:last-child').textContent = 'Camera disconnected. Waiting for reconnection...';
+        waitingTitle.textContent = 'Camera Device Offline';
+        waitingSub.textContent = 'Camera disconnected. You can send a remote high-priority push signal to wake it up.';
+        qualityText.textContent = 'OFFLINE';
       });
 
       socket.on('camera-reconnected', () => {
-        log('📷 Camera reconnected!', 'ok');
-        webrtcDot.className = 'status-dot yellow';
-        webrtcStatus.textContent = 'Camera back online';
-        waitingOverlay.querySelector('span:last-child').textContent = 'Camera reconnected, waiting for stream...';
+        log('Camera device restored signaling link.', 'ok');
+        waitingTitle.textContent = 'Camera Back Online';
+        waitingSub.textContent = 'Negotiating WebRTC peer connection...';
       });
 
-      // Phase 9: Auto-rejoin room after socket reconnects
+      // Battery updates from camera
+      socket.on('battery-status-update', ({ level, isCharging }) => {
+        const pct = Math.round(level * 100);
+        batteryText.textContent = `${pct}%${isCharging ? ' ⚡' : ''}`;
+        batteryBadge.style.display = 'flex';
+        batteryBadge.className = 'badge-tactical badge-battery' + (isCharging ? ' charging' : pct < 20 ? ' low' : '');
+      });
+
+      // Auto-reconnect after socket drops
       socket.io.on('reconnect', () => {
-        log('🔄 Socket reconnected', 'ok');
+        log('Signaling re-established, re-authenticating room: ' + currentRoomCode, 'ok');
         if (currentRoomCode) {
-          log('🔄 Auto-rejoining room: ' + currentRoomCode);
           socket.emit('reconnect-to-room', { roomCode: currentRoomCode, role: 'viewer' });
         }
       });
-
-      // Battery status from camera
-      socket.on('battery-status-update', ({ level, isCharging }) => {
-        const batteryBadge = document.getElementById('batteryBadge');
-        if (batteryBadge) {
-          const pct = Math.round(level * 100);
-          batteryBadge.textContent = '🔋 ' + pct + '%' + (isCharging ? ' ⚡' : '');
-          batteryBadge.style.display = 'inline';
-          if (pct < 20) {
-            batteryBadge.style.borderColor = 'rgba(239,68,68,0.5)';
-            batteryBadge.style.color = '#EF4444';
-          } else {
-            batteryBadge.style.borderColor = '';
-            batteryBadge.style.color = '';
-          }
-        }
-      });
     }
 
-    // ─── Join Room ───────────────────────────────────────────
+    // ─── Join Room ─────────────────────────────────────────────
     function joinRoom(code) {
-      log('🚪 Joining room: ' + code);
-      socket.emit('join-room', { roomCode: code }, (response) => {
-        log('🚪 Join response: ' + JSON.stringify(response));
+      log('Authenticating room entry: ' + code);
+      socket.emit('join-room', { roomCode: code }, (res) => {
+        if (res.success) {
+          currentRoomCode = res.roomCode;
+          saveRecentRoom(currentRoomCode);
 
-        if (response.success) {
-          currentRoomCode = response.roomCode;
-          roomBadge.textContent = 'Room: ' + currentRoomCode;
+          roomCodeText.textContent = 'ROOM: ' + currentRoomCode;
           joinSection.style.display = 'none';
-          videoSection.style.display = 'block';
-          log('✅ Joined room ' + currentRoomCode, 'ok');
+          streamViewport.style.display = 'flex';
+          waitingOverlay.style.display = 'flex';
+          waitingTitle.textContent = 'Establishing Peer Link...';
+          waitingSub.textContent = 'Awaiting encrypted WebRTC media pipeline from camera.';
 
-          webrtcDot.className = 'status-dot yellow';
-          webrtcStatus.textContent = 'Waiting for stream';
+          log(`Successfully joined room [${currentRoomCode}].`, 'ok');
         } else {
-          log('❌ Failed to join: ' + (response.error || 'Unknown error'), 'err');
-          alert('Failed to join room: ' + (response.error || 'Room not found'));
+          log(`Failed to join room [${code}]: ${res.error}`, 'err');
+          alert(`Could not connect: ${res.error || 'Room not found'}`);
+          wakeBtn.style.display = 'flex';
         }
       });
     }
 
-    // ─── WebRTC: Handle Offer ────────────────────────────────
+    // ─── WebRTC Handling ───────────────────────────────────────
     async function handleOffer(sdp, cameraSocketId) {
-      log('🔧 Creating peer connection...');
-
+      log('Configuring RTCPeerConnection with STUN servers...');
       peerConnection = new RTCPeerConnection(ICE_CONFIG);
 
-      // ICE candidates → send to camera
+      // ICE Candidates
       peerConnection.onicecandidate = (event) => {
         if (event.candidate) {
           socket.emit('ice-candidate', {
@@ -432,40 +1349,53 @@
         }
       };
 
-      // Receive remote stream
+      // Remote stream arrival
       peerConnection.ontrack = (event) => {
-        log('🎬 Remote track received!', 'ok');
+        log('Inbound media track verified: ' + event.track.kind, 'ok');
         if (event.streams && event.streams[0]) {
           remoteVideo.srcObject = event.streams[0];
           waitingOverlay.style.display = 'none';
-          webrtcDot.className = 'status-dot green';
-          webrtcStatus.textContent = 'Streaming';
-          log('✅ Video stream connected!', 'ok');
+          qualityText.textContent = 'EXCELLENT';
+          log('Real-time WebRTC audio/video stream connected fullscreen!', 'ok');
+
+          // Start stream duration counter
+          startStreamTimer();
+
+          // Enhance audio output with Web Audio gain booster
+          setupWebAudio(event.streams[0]);
+
+          // Detect video dimensions
+          remoteVideo.onloadedmetadata = () => {
+            resolutionTag.textContent = `${remoteVideo.videoWidth}x${remoteVideo.videoHeight} • 30 FPS`;
+          };
         }
       };
 
-      // Connection state
       peerConnection.oniceconnectionstatechange = () => {
         const state = peerConnection.iceConnectionState;
-        log('ICE state: ' + state);
+        log(`ICE Connection State: ${state.toUpperCase()}`);
         if (state === 'connected' || state === 'completed') {
-          webrtcDot.className = 'status-dot green';
-          webrtcStatus.textContent = 'Connected';
-          // Boost audio bitrate for better voice quality
-          boostAudioBitrate();
-          // Boost speaker volume
-          boostSpeakerVolume();
+          qualityText.textContent = 'OPTIMAL';
+          boostAudioSender();
         } else if (state === 'disconnected' || state === 'failed') {
-          webrtcDot.className = 'status-dot red';
-          webrtcStatus.textContent = 'Disconnected';
+          qualityText.textContent = 'DEGRADED';
         }
       };
 
-      // Set remote description (the offer)
+      // Set Offer
       await peerConnection.setRemoteDescription(new RTCSessionDescription(sdp));
-      log('📋 Remote description set');
 
-      // Get viewer's microphone for talk-back (starts muted)
+      // Flush buffered ICE candidates
+      for (const cand of pendingICECandidates) {
+        try {
+          await peerConnection.addIceCandidate(new RTCIceCandidate(cand));
+        } catch (e) {
+          log('Buffered ICE candidate error: ' + e.message, 'err');
+        }
+      }
+      pendingICECandidates = [];
+
+      // Acquire Talk-Back Mic
       try {
         localMicStream = await navigator.mediaDevices.getUserMedia({
           audio: {
@@ -473,23 +1403,22 @@
             noiseSuppression: true,
             autoGainControl: true,
             sampleRate: 48000,
-            channelCount: 1,
           },
-          video: false
+          video: false,
         });
         localMicStream.getAudioTracks().forEach(track => {
-          track.enabled = false; // muted by default
+          track.enabled = false; // muted initially
           peerConnection.addTrack(track, localMicStream);
         });
-        log('🎙️ Mic acquired for talk-back (muted)', 'ok');
-      } catch (micErr) {
-        log('⚠️ Mic not available: ' + micErr.message, 'err');
+        log('Talk-Back microphone initialized (armed, currently muted).', 'ok');
+      } catch (err) {
+        log('Talk-Back mic unavailable: ' + err.message, 'warn');
       }
 
-      // Create and send answer
+      // Create Answer
       const answer = await peerConnection.createAnswer();
       await peerConnection.setLocalDescription(answer);
-      log('📤 Sending answer to camera (with talk-back audio)');
+      log('Transmitting WebRTC answer to camera node...', 'info');
 
       socket.emit('answer', {
         targetSocketId: cameraSocketId,
@@ -497,42 +1426,300 @@
       });
     }
 
-    // ─── Audio Quality Boost ────────────────────────────────
-    function boostAudioBitrate() {
+    function boostAudioSender() {
       if (!peerConnection) return;
       try {
         peerConnection.getSenders().forEach(sender => {
           if (sender.track && sender.track.kind === 'audio') {
             const params = sender.getParameters();
-            if (!params.encodings || params.encodings.length === 0) {
-              params.encodings = [{}];
-            }
+            if (!params.encodings || params.encodings.length === 0) params.encodings = [{}];
             params.encodings[0].maxBitrate = 64000;
-            sender.setParameters(params)
-              .then(() => log('🎙️ Audio bitrate boosted to 64kbps', 'ok'))
-              .catch(e => log('Audio bitrate error: ' + e.message, 'err'));
+            sender.setParameters(params).catch(() => {});
           }
         });
-      } catch(e) { /* ignore */ }
+      } catch (e) { /* ignore */ }
     }
 
-    function boostSpeakerVolume() {
+    function setupWebAudio(stream) {
       try {
-        const stream = remoteVideo.srcObject;
-        if (!stream) return;
-        const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-        const source = audioCtx.createMediaStreamSource(stream);
-        const gainNode = audioCtx.createGain();
-        gainNode.gain.value = 2.5; // 2.5x volume boost
+        if (!stream.getAudioTracks().length) return;
+        const AudioCtxClass = window.AudioContext || window.webkitAudioContext;
+        if (!AudioCtxClass) return;
+
+        audioContext = new AudioCtxClass();
+        const source = audioContext.createMediaStreamSource(stream);
+        gainNode = audioContext.createGain();
+        gainNode.gain.value = parseFloat(volSlider.value);
+
         source.connect(gainNode);
-        gainNode.connect(audioCtx.destination);
-        log('🔊 Speaker volume boosted (2.5x)', 'ok');
-      } catch(e) {
-        log('Speaker boost error: ' + e.message, 'err');
+        gainNode.connect(audioContext.destination);
+
+        // Mute video tag directly to avoid doubled echo
+        remoteVideo.muted = true;
+        log('Web Audio 200% amplifier active.', 'ok');
+      } catch (e) {
+        remoteVideo.muted = false;
       }
     }
 
-    // ─── Disconnect ──────────────────────────────────────────
+    function startStreamTimer() {
+      clearInterval(streamTimerInterval);
+      streamStartTime = Date.now();
+      streamTimerInterval = setInterval(() => {
+        const elapsed = Math.floor((Date.now() - streamStartTime) / 1000);
+        const m = String(Math.floor(elapsed / 60)).padStart(2, '0');
+        const s = String(elapsed % 60).padStart(2, '0');
+        streamTimer.textContent = `${m}:${s}`;
+      }, 1000);
+    }
+
+    // ─── Remote Wake-Up Trigger ────────────────────────────────
+    async function triggerRemoteWake(code) {
+      if (!code) {
+        alert('Please specify a room code to wake.');
+        return;
+      }
+
+      log(`Dispatching remote FCM push-to-wake for room [${code}]...`, 'warn');
+      const wakeTargets = [wakeBtnText, overlayWakeText];
+      wakeTargets.forEach(t => t.textContent = 'Sending Wake Push...');
+
+      try {
+        const res = await fetch('/api/devices/wake-by-room', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ roomCode: code })
+        });
+        const data = await res.json();
+
+        if (res.ok && data.success) {
+          log(`Wake signal delivered! ${data.message} (Message ID: ${data.messageId || 'OK'})`, 'ok');
+          startWakeCountdown(30);
+        } else {
+          log(`Wake failed: ${data.error || 'Device not reachable'}`, 'err');
+          alert(`Wake Failed: ${data.error || 'Could not wake camera device'}`);
+          wakeTargets.forEach(t => t.textContent = 'Wake Camera via Push');
+        }
+      } catch (err) {
+        log(`Wake network error: ${err.message}`, 'err');
+        wakeTargets.forEach(t => t.textContent = 'Wake Camera via Push');
+      }
+    }
+
+    function startWakeCountdown(seconds) {
+      let rem = seconds;
+      clearInterval(wakeCooldownTimer);
+      wakeCooldownTimer = setInterval(() => {
+        wakeBtnText.textContent = `Waking Camera (${rem}s)...`;
+        overlayWakeText.textContent = `Waking Camera (${rem}s)...`;
+        rem--;
+        if (rem < 0) {
+          clearInterval(wakeCooldownTimer);
+          wakeBtnText.textContent = 'Wake Camera via Push';
+          overlayWakeText.textContent = 'Wake Camera via Push';
+        }
+      }, 1000);
+    }
+
+    // ─── Media Controls ────────────────────────────────────────
+    // Talk Back Toggle
+    talkBtn.addEventListener('click', () => {
+      if (!localMicStream) {
+        alert('Microphone not detected or permission denied.');
+        return;
+      }
+      talkOn = !talkOn;
+      localMicStream.getAudioTracks().forEach(t => t.enabled = talkOn);
+      talkBtn.classList.toggle('active-cyan', talkOn);
+      talkBtnText.textContent = talkOn ? 'Talking...' : 'Talk';
+      audioWave.style.display = talkOn ? 'inline-flex' : 'none';
+      log(`Talk-Back ${talkOn ? 'TRANSMITTING' : 'MUTED'}`, talkOn ? 'ok' : 'info');
+    });
+
+    // Flash / Torch Toggle
+    flashBtn.addEventListener('click', () => {
+      if (!currentRoomCode) return;
+      flashOn = !flashOn;
+      socket.emit('toggle-flash', { roomCode: currentRoomCode, enabled: flashOn });
+      flashBtn.classList.toggle('active-amber', flashOn);
+      flashBtnText.textContent = flashOn ? 'Flash ON' : 'Flash';
+      log(`Remote Flashlight command: ${flashOn ? 'ENGAGED' : 'OFF'}`, 'info');
+    });
+
+    // Switch Camera Front/Back
+    switchCamBtn.addEventListener('click', () => {
+      if (!currentRoomCode) return;
+      currentCamera = currentCamera === 'back' ? 'front' : 'back';
+      socket.emit('switch-camera', { roomCode: currentRoomCode, cameraType: currentCamera });
+      log(`Requested camera switch to: ${currentCamera.toUpperCase()}`, 'info');
+    });
+
+    // Volume Slider
+    volSlider.addEventListener('input', (e) => {
+      const val = parseFloat(e.target.value);
+      if (gainNode) {
+        gainNode.gain.value = val;
+      }
+      if (audioContext && audioContext.state === 'suspended') {
+        audioContext.resume();
+      }
+    });
+
+    // Digital Zoom (1x, 1.5x, 2x, 3x)
+    document.querySelectorAll('.zoom-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        document.querySelectorAll('.zoom-btn').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        const zoom = btn.dataset.zoom;
+        remoteVideo.style.transform = `scale(${zoom})`;
+        log(`Digital zoom set to ${zoom}x`);
+      });
+    });
+
+    // Snapshot Frame Capture
+    snapBtn.addEventListener('click', () => {
+      if (!remoteVideo.srcObject) {
+        alert('No active video stream to capture.');
+        return;
+      }
+
+      // Shutter flash effect
+      flashOverlay.style.opacity = '0.8';
+      setTimeout(() => flashOverlay.style.opacity = '0', 100);
+
+      const canvas = document.createElement('canvas');
+      canvas.width = remoteVideo.videoWidth || 1280;
+      canvas.height = remoteVideo.videoHeight || 720;
+      const ctx = canvas.getContext('2d');
+      ctx.drawImage(remoteVideo, 0, 0, canvas.width, canvas.height);
+
+      const dataUrl = canvas.toDataURL('image/png');
+      const filename = `Vigilix_${currentRoomCode}_${Date.now()}.png`;
+
+      // Download
+      const link = document.createElement('a');
+      link.download = filename;
+      link.href = dataUrl;
+      link.click();
+
+      // Add to session gallery
+      addGalleryItem(dataUrl, 'image', filename);
+      log(`Snapshot saved: ${filename}`, 'ok');
+    });
+
+    // Video Recording via MediaRecorder
+    recordBtn.addEventListener('click', () => {
+      const stream = remoteVideo.srcObject;
+      if (!stream) {
+        alert('No active video stream to record.');
+        return;
+      }
+
+      if (mediaRecorder && mediaRecorder.state === 'recording') {
+        // Stop recording
+        mediaRecorder.stop();
+        recordBtn.classList.remove('active-rec');
+        recordBtnText.textContent = 'Record';
+        clearInterval(recordInterval);
+        log('Recording finished, preparing file...', 'info');
+      } else {
+        // Start recording
+        recordedChunks = [];
+        try {
+          mediaRecorder = new MediaRecorder(stream, { mimeType: 'video/webm;codecs=vp8,opus' });
+        } catch (e) {
+          mediaRecorder = new MediaRecorder(stream);
+        }
+
+        mediaRecorder.ondataavailable = (e) => {
+          if (e.data && e.data.size > 0) recordedChunks.push(e.data);
+        };
+
+        mediaRecorder.onstop = () => {
+          const blob = new Blob(recordedChunks, { type: 'video/webm' });
+          const url = URL.createObjectURL(blob);
+          const filename = `Vigilix_Clip_${currentRoomCode}_${Date.now()}.webm`;
+
+          const a = document.createElement('a');
+          a.href = url;
+          a.download = filename;
+          a.click();
+
+          addGalleryItem(url, 'video', filename);
+          log(`Video clip exported: ${filename}`, 'ok');
+        };
+
+        mediaRecorder.start(1000);
+        recordingStartTime = Date.now();
+        recordBtn.classList.add('active-rec');
+        recordInterval = setInterval(() => {
+          const sec = Math.floor((Date.now() - recordingStartTime) / 1000);
+          const m = String(Math.floor(sec / 60)).padStart(2, '0');
+          const s = String(sec % 60).padStart(2, '0');
+          recordBtnText.textContent = `REC ${m}:${s}`;
+        }, 1000);
+
+        log('Local video recording started.', 'warn');
+      }
+    });
+
+    function addGalleryItem(src, type, filename) {
+      gallerySection.style.display = 'block';
+      const item = document.createElement('div');
+      item.className = 'gallery-item';
+      item.title = `Click to re-download: ${filename}`;
+
+      if (type === 'image') {
+        item.innerHTML = `<img src="${src}" alt="Snapshot">`;
+      } else {
+        item.innerHTML = `<video src="${src}"></video>`;
+      }
+
+      item.onclick = () => {
+        const a = document.createElement('a');
+        a.href = src;
+        a.download = filename;
+        a.click();
+      };
+
+      galleryStrip.prepend(item);
+      const count = galleryStrip.querySelectorAll('.gallery-item').length;
+      galleryCount.textContent = `${count} capture${count === 1 ? '' : 's'}`;
+    }
+
+    // Fullscreen Toggle
+    fullscreenBtn.addEventListener('click', () => {
+      if (!document.fullscreenElement) {
+        videoContainer.requestFullscreen().catch(err => log('Fullscreen error: ' + err.message, 'err'));
+      } else {
+        document.exitFullscreen();
+      }
+    });
+
+    // Picture-in-Picture Toggle
+    pipBtn.addEventListener('click', async () => {
+      try {
+        if (document.pictureInPictureElement) {
+          await document.exitPictureInPicture();
+        } else if (document.pictureInPictureEnabled && remoteVideo.srcObject) {
+          await remoteVideo.requestPictureInPicture();
+        }
+      } catch (err) {
+        log('Picture-in-Picture error: ' + err.message, 'err');
+      }
+    });
+
+    // Copy Room Code
+    roomBadge.addEventListener('click', () => {
+      if (currentRoomCode) {
+        navigator.clipboard.writeText(currentRoomCode);
+        const original = roomCodeText.textContent;
+        roomCodeText.textContent = 'COPIED!';
+        setTimeout(() => roomCodeText.textContent = original, 1200);
+      }
+    });
+
+    // ─── Disconnect Session ────────────────────────────────────
     function disconnect() {
       if (peerConnection) {
         peerConnection.close();
@@ -542,35 +1729,51 @@
         localMicStream.getTracks().forEach(t => t.stop());
         localMicStream = null;
       }
+      if (mediaRecorder && mediaRecorder.state === 'recording') {
+        mediaRecorder.stop();
+      }
+      clearInterval(streamTimerInterval);
+      clearInterval(recordInterval);
+
       remoteVideo.srcObject = null;
-      waitingOverlay.style.display = 'flex';
-      waitingOverlay.querySelector('span:last-child').textContent = 'Waiting for camera stream...';
+      pendingICECandidates = [];
+
       if (socket) {
         socket.emit('leave-room');
       }
-      currentRoomCode = null;
-      videoSection.style.display = 'none';
-      joinSection.style.display = 'block';
-      codeInput.value = '';
-      webrtcDot.className = 'status-dot red';
-      webrtcStatus.textContent = 'No stream';
 
-      // Reset control button states
+      currentRoomCode = null;
       talkOn = false;
       flashOn = false;
-      document.getElementById('talkBtn').classList.remove('active');
-      document.getElementById('talkBtn').textContent = '🎙️ Talk';
-      document.getElementById('flashBtn').classList.remove('active');
-      document.getElementById('flashBtn').textContent = '🔦 Flash';
-      document.getElementById('batteryBadge').style.display = 'none';
+      talkBtn.classList.remove('active-cyan');
+      talkBtnText.textContent = 'Talk';
+      audioWave.style.display = 'none';
+      flashBtn.classList.remove('active-amber');
+      flashBtnText.textContent = 'Flash';
+      batteryBadge.style.display = 'none';
 
-      log('Disconnected from room');
+      streamViewport.style.display = 'none';
+      joinSection.style.display = 'block';
+      codeInput.value = '';
+      joinBtn.disabled = true;
+
+      log('Session terminated. Ready for new connection.');
     }
 
-    // ─── Event Listeners ─────────────────────────────────────
+    disconnectBtn.addEventListener('click', disconnect);
+
+    // ─── Input Events ──────────────────────────────────────────
     codeInput.addEventListener('input', () => {
       codeInput.value = codeInput.value.toUpperCase();
-      joinBtn.disabled = codeInput.value.trim().length < 4;
+      const valid = codeInput.value.trim().length >= 4;
+      joinBtn.disabled = !valid;
+      wakeBtn.style.display = valid ? 'flex' : 'none';
+    });
+
+    codeInput.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter' && !joinBtn.disabled) {
+        joinBtn.click();
+      }
     });
 
     joinBtn.addEventListener('click', () => {
@@ -580,74 +1783,17 @@
       }
     });
 
-    codeInput.addEventListener('keydown', (e) => {
-      if (e.key === 'Enter') joinBtn.click();
+    wakeBtn.addEventListener('click', () => {
+      triggerRemoteWake(codeInput.value.trim().toUpperCase());
     });
 
-    disconnectBtn.addEventListener('click', disconnect);
-
-    // ─── Talk-Back Toggle ────────────────────────────────────
-    const talkBtn = document.getElementById('talkBtn');
-
-    talkBtn.addEventListener('click', () => {
-      if (!localMicStream) {
-        log('⚠️ Mic not available for talk-back', 'err');
-        return;
-      }
-      talkOn = !talkOn;
-      localMicStream.getAudioTracks().forEach(track => {
-        track.enabled = talkOn;
-      });
-      talkBtn.classList.toggle('active', talkOn);
-      talkBtn.textContent = talkOn ? '🎙️ Talking...' : '🎙️ Talk';
-      log(`🎙️ Talk-back ${talkOn ? 'ON' : 'OFF'}`, 'ok');
-    });
-
-    // ─── Flash Toggle ────────────────────────────────────────
-    const flashBtn = document.getElementById('flashBtn');
-    const batteryBadge = document.getElementById('batteryBadge');
-
-    flashBtn.addEventListener('click', () => {
-      if (!currentRoomCode) return;
-      flashOn = !flashOn;
-      socket.emit('toggle-flash', { roomCode: currentRoomCode, enabled: flashOn });
-      flashBtn.classList.toggle('active', flashOn);
-      flashBtn.textContent = flashOn ? '🔦 Flash ON' : '🔦 Flash';
-      log(`🔦 Flash ${flashOn ? 'ON' : 'OFF'}`, 'ok');
-    });
-
-    // ─── Screenshot ──────────────────────────────────────────
-    document.getElementById('screenshotBtn').addEventListener('click', () => {
-      const video = document.getElementById('remoteVideo');
-      if (!video.srcObject) { alert('No stream to capture'); return; }
-
-      const canvas = document.createElement('canvas');
-      canvas.width = video.videoWidth;
-      canvas.height = video.videoHeight;
-      canvas.getContext('2d').drawImage(video, 0, 0);
-
-      const link = document.createElement('a');
-      link.download = `smartcctv_${new Date().toISOString().slice(0,19).replace(/:/g,'-')}.png`;
-      link.href = canvas.toDataURL('image/png');
-      link.click();
-      log('📸 Screenshot saved!', 'ok');
-    });
-
-    // ─── Fullscreen ──────────────────────────────────────────
-    document.getElementById('fullscreenBtn').addEventListener('click', () => {
-      const container = document.getElementById('videoContainer');
-      if (!document.fullscreenElement) {
-        container.requestFullscreen().catch(err => log('Fullscreen error: ' + err.message, 'err'));
-      } else {
-        document.exitFullscreen();
+    overlayWakeBtn.addEventListener('click', () => {
+      if (currentRoomCode) {
+        triggerRemoteWake(currentRoomCode);
       }
     });
 
-    // ─── Battery Status from Camera ──────────────────────────
-    // Listen for battery updates if the camera sends them
-    // (Camera device can emit battery-status periodically)
-
-    // ─── Start ───────────────────────────────────────────────
+    // ─── Initialize ────────────────────────────────────────────
     connectSocket();
   </script>
 </body>

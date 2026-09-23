@@ -3,25 +3,28 @@ import {
   View,
   Text,
   StyleSheet,
-  TextInput,
   TouchableOpacity,
   KeyboardAvoidingView,
   Platform,
   ScrollView,
-  StatusBar,
-  ActivityIndicator,
   Alert,
 } from 'react-native';
-import { LinearGradient } from 'expo-linear-gradient';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { ArrowLeft, AlertCircle, Eye, EyeOff } from 'lucide-react-native';
 import { useAuthStore } from '../store/authStore';
+import { useTheme } from '../design/ThemeContext';
+import { VButton, VInput } from '../components/ui';
+import { radii, spacing, typography } from '../design/tokens';
 
 interface AuthScreenProps {
   mode: 'login' | 'register';
-  onSwitchMode: () => void;
+  onSwitchMode: (mode: 'login' | 'register') => void;
   onBack: () => void;
 }
 
 export default function AuthScreen({ mode, onSwitchMode, onBack }: AuthScreenProps) {
+  const { theme } = useTheme();
+  const insets = useSafeAreaInsets();
   const { login, register, isLoading, error, clearError } = useAuthStore();
 
   const [name, setName] = useState('');
@@ -29,13 +32,20 @@ export default function AuthScreen({ mode, onSwitchMode, onBack }: AuthScreenPro
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
   const isLogin = mode === 'login';
+
+  const handleTabChange = (tab: 'login' | 'register') => {
+    clearError();
+    if (tab !== mode) {
+      onSwitchMode(tab);
+    }
+  };
 
   const handleSubmit = async () => {
     clearError();
 
-    // Validation
     if (!email.trim() || !password.trim()) {
       Alert.alert('Missing Fields', 'Please fill in all required fields.');
       return;
@@ -56,157 +66,278 @@ export default function AuthScreen({ mode, onSwitchMode, onBack }: AuthScreenPro
       return;
     }
 
-    let success: boolean;
     if (isLogin) {
-      success = await login(email.trim(), password);
+      await login(email.trim(), password);
     } else {
-      success = await register(name.trim(), email.trim(), password);
-    }
-
-    if (!success) {
-      // Error is set in the store
+      await register(name.trim(), email.trim(), password);
     }
   };
 
   return (
-    <LinearGradient
-      colors={['#060F1D', '#0A1628', '#0F1F3D']}
-      style={styles.container}
-    >
-      <StatusBar barStyle="light-content" translucent backgroundColor="transparent" />
+    <View style={[styles.container, { backgroundColor: theme.bg.primary }]}>
       <KeyboardAvoidingView
-        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
         style={styles.keyboardView}
       >
         <ScrollView
-          contentContainerStyle={styles.scrollContent}
+          contentContainerStyle={[
+            styles.scrollContent,
+            {
+              paddingTop: Math.max(insets.top + 10, 24),
+              paddingBottom: Platform.OS === 'ios' ? Math.max(insets.bottom + 20, 28) : 40,
+            },
+          ]}
           keyboardShouldPersistTaps="handled"
           showsVerticalScrollIndicator={false}
         >
-          {/* Back button */}
-          <TouchableOpacity style={styles.backButton} onPress={onBack}>
-            <Text style={styles.backText}>← Back</Text>
-          </TouchableOpacity>
+          {/* Top Bar matching reference */}
+          <View style={styles.topBar}>
+            <View>
+              <Text style={[styles.kicker, { color: theme.text.secondary }]}>
+                VIGILIX ACCOUNT
+              </Text>
+              <Text style={[styles.screenTitle, { color: theme.text.primary }]}>
+                {isLogin ? 'Sign in to access' : 'Create an account'}
+              </Text>
+            </View>
 
-          {/* Header */}
-          <View style={styles.header}>
-            <Text style={styles.title}>{isLogin ? 'Welcome Back' : 'Create Account'}</Text>
-            <Text style={styles.subtitle}>
-              {isLogin
-                ? 'Sign in to access your cameras'
-                : 'Start securing your space'}
-            </Text>
+            <TouchableOpacity
+              activeOpacity={0.7}
+              onPress={onBack}
+              style={[
+                styles.iconButton,
+                {
+                  backgroundColor: theme.surface.surface2,
+                  borderColor: theme.border.primary,
+                },
+              ]}
+            >
+              <ArrowLeft size={16} color={theme.text.primary} />
+            </TouchableOpacity>
           </View>
 
-          {/* Error */}
+          {/* Error Banner */}
           {error && (
-            <View style={styles.errorContainer}>
-              <Text style={styles.errorText}>⚠️ {error}</Text>
+            <View
+              style={[
+                styles.errorCard,
+                {
+                  backgroundColor: 'rgba(217, 85, 94, 0.1)',
+                  borderColor: 'rgba(217, 85, 94, 0.25)',
+                },
+              ]}
+            >
+              <AlertCircle size={15} color={theme.status.danger} />
+              <Text style={[styles.errorText, { color: theme.status.danger }]}>
+                {error}
+              </Text>
             </View>
           )}
 
-          {/* Form */}
-          <View style={styles.form}>
-            {!isLogin && (
-              <View style={styles.inputContainer}>
-                <Text style={styles.label}>Name</Text>
-                <TextInput
-                  style={styles.input}
-                  placeholder="Your name"
-                  placeholderTextColor="rgba(255,255,255,0.3)"
+          {/* Form Card */}
+          <View
+            style={[
+              styles.card,
+              {
+                backgroundColor: theme.surface.card,
+                borderColor: theme.border.primary,
+              },
+            ]}
+          >
+            {/* Segmented Switch */}
+            <View
+              style={[
+                styles.segmentedControl,
+                {
+                  backgroundColor: theme.surface.surface2,
+                  borderColor: theme.border.primary,
+                },
+              ]}
+            >
+              <TouchableOpacity
+                activeOpacity={0.8}
+                onPress={() => handleTabChange('login')}
+                style={[
+                  styles.segmentButton,
+                  isLogin && [
+                    styles.segmentButtonActive,
+                    {
+                      backgroundColor: theme.surface.card,
+                      borderColor: theme.border.primary,
+                    },
+                  ],
+                ]}
+              >
+                <Text
+                  style={[
+                    styles.segmentText,
+                    {
+                      color: isLogin ? theme.text.primary : theme.text.secondary,
+                      fontWeight: isLogin ? '600' : '500',
+                    },
+                  ]}
+                >
+                  Sign in
+                </Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                activeOpacity={0.8}
+                onPress={() => handleTabChange('register')}
+                style={[
+                  styles.segmentButton,
+                  !isLogin && [
+                    styles.segmentButtonActive,
+                    {
+                      backgroundColor: theme.surface.card,
+                      borderColor: theme.border.primary,
+                    },
+                  ],
+                ]}
+              >
+                <Text
+                  style={[
+                    styles.segmentText,
+                    {
+                      color: !isLogin ? theme.text.primary : theme.text.secondary,
+                      fontWeight: !isLogin ? '600' : '500',
+                    },
+                  ]}
+                >
+                  Create account
+                </Text>
+              </TouchableOpacity>
+            </View>
+
+            {/* Form Fields with stable keys and no autocorrect issues */}
+            <View style={styles.formFields}>
+              {!isLogin && (
+                <VInput
+                  key="input_name"
+                  label="Full Name"
+                  placeholder="e.g. Alex Morgan"
                   value={name}
                   onChangeText={setName}
                   autoCapitalize="words"
-                  autoComplete="name"
+                  autoCorrect={false}
                 />
-              </View>
-            )}
+              )}
 
-            <View style={styles.inputContainer}>
-              <Text style={styles.label}>Email</Text>
-              <TextInput
-                style={styles.input}
-                placeholder="you@example.com"
-                placeholderTextColor="rgba(255,255,255,0.3)"
+              <VInput
+                key="input_email"
+                label="Account Email"
+                placeholder="name@domain.com"
                 value={email}
                 onChangeText={setEmail}
                 keyboardType="email-address"
                 autoCapitalize="none"
-                autoComplete="email"
+                autoCorrect={false}
               />
-            </View>
 
-            <View style={styles.inputContainer}>
-              <Text style={styles.label}>Password</Text>
-              <View style={styles.passwordRow}>
-                <TextInput
-                  style={[styles.input, styles.passwordInput]}
-                  placeholder="••••••••"
-                  placeholderTextColor="rgba(255,255,255,0.3)"
-                  value={password}
-                  onChangeText={setPassword}
-                  secureTextEntry={!showPassword}
-                  autoComplete="password"
-                />
-                <TouchableOpacity
-                  style={styles.eyeButton}
-                  onPress={() => setShowPassword(!showPassword)}
-                >
-                  <Text style={styles.eyeText}>{showPassword ? '🙈' : '👁️'}</Text>
-                </TouchableOpacity>
-              </View>
-            </View>
+              <VInput
+                key="input_password"
+                label="Password"
+                placeholder="Enter password"
+                value={password}
+                onChangeText={setPassword}
+                secureTextEntry={!showPassword}
+                autoCapitalize="none"
+                autoCorrect={false}
+                rightIcon={
+                  <TouchableOpacity
+                    onPress={() => setShowPassword(!showPassword)}
+                    hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+                  >
+                    {showPassword ? (
+                      <EyeOff size={16} color={theme.text.tertiary} />
+                    ) : (
+                      <Eye size={16} color={theme.text.tertiary} />
+                    )}
+                  </TouchableOpacity>
+                }
+              />
 
-            {!isLogin && (
-              <View style={styles.inputContainer}>
-                <Text style={styles.label}>Confirm Password</Text>
-                <TextInput
-                  style={styles.input}
-                  placeholder="••••••••"
-                  placeholderTextColor="rgba(255,255,255,0.3)"
+              {!isLogin && (
+                <VInput
+                  key="input_confirm_password"
+                  label="Confirm Password"
+                  placeholder="Re-enter password"
                   value={confirmPassword}
                   onChangeText={setConfirmPassword}
-                  secureTextEntry={!showPassword}
+                  secureTextEntry={!showConfirmPassword}
+                  autoCapitalize="none"
+                  autoCorrect={false}
+                  rightIcon={
+                    <TouchableOpacity
+                      onPress={() => setShowConfirmPassword(!showConfirmPassword)}
+                      hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+                    >
+                      {showConfirmPassword ? (
+                        <EyeOff size={16} color={theme.text.tertiary} />
+                      ) : (
+                        <Eye size={16} color={theme.text.tertiary} />
+                      )}
+                    </TouchableOpacity>
+                  }
                 />
+              )}
+            </View>
+
+            {/* Forgot Password for login */}
+            {isLogin && (
+              <View style={styles.forgotRow}>
+                <TouchableOpacity
+                  activeOpacity={0.6}
+                  onPress={() =>
+                    Alert.alert(
+                      'Reset Password',
+                      'Please contact your system administrator or re-register.'
+                    )
+                  }
+                >
+                  <Text style={[styles.linkText, { color: theme.accent.primary }]}>
+                    Forgot password?
+                  </Text>
+                </TouchableOpacity>
               </View>
             )}
-          </View>
 
-          {/* Submit */}
-          <TouchableOpacity
-            style={[styles.submitButton, isLoading && styles.submitDisabled]}
-            onPress={handleSubmit}
-            disabled={isLoading}
-            activeOpacity={0.8}
-          >
-            <LinearGradient
-              colors={['#2563EB', '#3B82F6']}
-              start={{ x: 0, y: 0 }}
-              end={{ x: 1, y: 0 }}
-              style={styles.submitGradient}
+            {/* Security Guarantee Row matching reference */}
+            <View
+              style={[
+                styles.securityRow,
+                { borderTopColor: theme.border.primary },
+              ]}
             >
-              {isLoading ? (
-                <ActivityIndicator color="#FFF" />
-              ) : (
-                <Text style={styles.submitText}>
-                  {isLogin ? 'Sign In' : 'Create Account'}
+              <View style={styles.securityItem}>
+                <View
+                  style={[
+                    styles.secureDot,
+                    { backgroundColor: theme.status.success },
+                  ]}
+                />
+                <Text style={[styles.securityText, { color: theme.text.secondary }]}>
+                  Secure session
                 </Text>
-              )}
-            </LinearGradient>
-          </TouchableOpacity>
-
-          {/* Switch mode */}
-          <TouchableOpacity style={styles.switchContainer} onPress={onSwitchMode}>
-            <Text style={styles.switchText}>
-              {isLogin ? "Don't have an account? " : 'Already have an account? '}
-              <Text style={styles.switchLink}>
-                {isLogin ? 'Sign Up' : 'Sign In'}
+              </View>
+              <Text style={[styles.securityText, { color: theme.text.tertiary }]}>
+                AES-GCM · Direct
               </Text>
-            </Text>
-          </TouchableOpacity>
+            </View>
+
+            {/* Action CTA */}
+            <VButton
+              title={isLogin ? 'Sign in' : 'Create account'}
+              onPress={handleSubmit}
+              variant="primary"
+              size="lg"
+              loading={isLoading}
+              fullWidth
+            />
+          </View>
         </ScrollView>
       </KeyboardAvoidingView>
-    </LinearGradient>
+    </View>
   );
 }
 
@@ -218,112 +349,116 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   scrollContent: {
-    flexGrow: 1,
-    paddingHorizontal: 28,
-    paddingTop: 60,
-    paddingBottom: 40,
+    paddingHorizontal: 20,
   },
-  backButton: {
-    marginBottom: 24,
+  topBar: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 16,
   },
-  backText: {
-    fontSize: 16,
-    fontFamily: 'Inter_500Medium',
-    color: '#64B5F6',
+  kicker: {
+    fontSize: 10,
+    fontWeight: '600',
+    letterSpacing: 1.2,
+    marginBottom: 4,
   },
-  header: {
-    marginBottom: 32,
+  screenTitle: {
+    fontSize: 22,
+    fontWeight: '700',
+    letterSpacing: -0.4,
   },
-  title: {
-    fontSize: 32,
-    fontFamily: 'Inter_700Bold',
-    color: '#FFFFFF',
-    letterSpacing: -0.5,
-  },
-  subtitle: {
-    fontSize: 15,
-    fontFamily: 'Inter_400Regular',
-    color: 'rgba(255,255,255,0.5)',
-    marginTop: 8,
-  },
-  errorContainer: {
-    backgroundColor: 'rgba(239,68,68,0.15)',
+  iconButton: {
+    width: 36,
+    height: 36,
     borderRadius: 12,
-    padding: 14,
-    marginBottom: 20,
     borderWidth: 1,
-    borderColor: 'rgba(239,68,68,0.3)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  errorCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: 12,
+    borderRadius: radii.input,
+    borderWidth: 1,
+    marginBottom: 14,
+    gap: 8,
   },
   errorText: {
-    fontSize: 14,
-    fontFamily: 'Inter_500Medium',
-    color: '#EF4444',
+    fontSize: 12,
+    flex: 1,
+    fontWeight: '500',
   },
-  form: {
-    gap: 20,
-    marginBottom: 28,
-  },
-  inputContainer: {},
-  label: {
-    fontSize: 13,
-    fontFamily: 'Inter_600SemiBold',
-    color: 'rgba(255,255,255,0.7)',
-    marginBottom: 8,
-    textTransform: 'uppercase',
-    letterSpacing: 1,
-  },
-  input: {
-    backgroundColor: 'rgba(255,255,255,0.08)',
-    borderRadius: 14,
-    paddingHorizontal: 18,
-    paddingVertical: 16,
-    fontSize: 16,
-    fontFamily: 'Inter_400Regular',
-    color: '#FFFFFF',
+  card: {
+    borderRadius: radii.card,
     borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.1)',
+    padding: 18,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.1,
+    shadowRadius: 20,
+    elevation: 4,
   },
-  passwordRow: {
-    position: 'relative',
+  segmentedControl: {
+    flexDirection: 'row',
+    borderRadius: 14,
+    borderWidth: 1,
+    padding: 3,
+    marginBottom: 18,
   },
-  passwordInput: {
-    paddingRight: 50,
-  },
-  eyeButton: {
-    position: 'absolute',
-    right: 16,
-    top: 16,
-  },
-  eyeText: {
-    fontSize: 18,
-  },
-  submitButton: {
-    borderRadius: 16,
-    overflow: 'hidden',
-    marginBottom: 20,
-  },
-  submitDisabled: {
-    opacity: 0.7,
-  },
-  submitGradient: {
-    paddingVertical: 18,
+  segmentButton: {
+    flex: 1,
+    height: 34,
+    borderRadius: 11,
     alignItems: 'center',
+    justifyContent: 'center',
   },
-  submitText: {
-    fontSize: 17,
-    fontFamily: 'Inter_600SemiBold',
-    color: '#FFFFFF',
+  segmentButtonActive: {
+    borderWidth: 1,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.08,
+    shadowRadius: 4,
+    elevation: 1,
   },
-  switchContainer: {
+  segmentText: {
+    fontSize: 12,
+    letterSpacing: 0.1,
+  },
+  formFields: {
+    gap: 12,
+  },
+  forgotRow: {
+    alignItems: 'flex-end',
+    marginTop: 8,
+    marginBottom: 4,
+  },
+  linkText: {
+    fontSize: 11,
+    fontWeight: '500',
+  },
+  securityRow: {
+    flexDirection: 'row',
     alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingTop: 14,
+    marginTop: 14,
+    marginBottom: 16,
+    borderTopWidth: 1,
   },
-  switchText: {
-    fontSize: 14,
-    fontFamily: 'Inter_400Regular',
-    color: 'rgba(255,255,255,0.5)',
+  securityItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
   },
-  switchLink: {
-    color: '#3B82F6',
-    fontFamily: 'Inter_600SemiBold',
+  secureDot: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+  },
+  securityText: {
+    fontSize: 10,
+    fontWeight: '500',
   },
 });

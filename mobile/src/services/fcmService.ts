@@ -56,26 +56,33 @@ class FCMService {
 
       // Get FCM token
       this.token = await msg().getToken();
-      console.log('[FCM] ✅ Token:', this.token?.substring(0, 20) + '...');
+      console.log('[FCM] Token:', this.token?.substring(0, 20) + '...');
 
       // Listen for token refresh
       msg().onTokenRefresh((newToken: string) => {
-        console.log('[FCM] 🔄 Token refreshed');
+        console.log('[FCM] Token refreshed');
         this.token = newToken;
         this.updateTokenOnServer(newToken);
       });
 
       // Listen for foreground messages
       this.unsubscribeOnMessage = msg().onMessage(async (remoteMessage: any) => {
-        console.log('[FCM] 📩 Foreground message:', remoteMessage?.data);
+        console.log('[FCM] Foreground message:', remoteMessage?.data);
         this.handleMessage(remoteMessage?.data);
       });
 
-      // Handle background/quit messages
-      msg().setBackgroundMessageHandler(async (remoteMessage: any) => {
-        console.log('[FCM] 📩 Background message:', remoteMessage?.data);
+      // Handle notification opened when app is running in background
+      msg().onNotificationOpenedApp((remoteMessage: any) => {
+        console.log('[FCM] Notification opened from background:', remoteMessage?.data);
         this.handleMessage(remoteMessage?.data);
       });
+
+      // Handle notification opened when app was completely quit
+      const initialNotification = await msg().getInitialNotification();
+      if (initialNotification?.data) {
+        console.log('[FCM] Notification opened from quit state:', initialNotification.data);
+        this.handleMessage(initialNotification.data);
+      }
 
       return this.token;
     } catch (error: any) {
@@ -91,7 +98,7 @@ class FCMService {
     if (!data) return;
 
     if (data.action === 'wake') {
-      console.log('[FCM] 🔔 WAKE command received! Room:', data.roomCode);
+      console.log('[FCM] WAKE command received! Room:', data.roomCode);
       if (this.onWakeCallback && data.roomCode) {
         this.onWakeCallback(data.roomCode);
       }

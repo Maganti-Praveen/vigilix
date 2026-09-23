@@ -6,6 +6,7 @@
 import React, { useCallback } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, Alert } from 'react-native';
 import * as Clipboard from 'expo-clipboard';
+import { Copy } from 'lucide-react-native';
 import { GlassCard } from './GlassCard';
 import { colors, fontSize, fontWeight, spacing, borderRadius } from '../constants/theme';
 
@@ -39,7 +40,8 @@ export function RoomCodeDisplay({ roomCode, showQR = true }: RoomCodeDisplayProp
       </TouchableOpacity>
 
       <TouchableOpacity onPress={handleCopy} style={styles.copyButton}>
-        <Text style={styles.copyText}>📋 Tap to Copy</Text>
+        <Copy size={14} color={colors.accent.primary} style={{ marginRight: 6 }} />
+        <Text style={styles.copyText}>Tap to Copy</Text>
       </TouchableOpacity>
 
       <Text style={styles.hint}>
@@ -83,6 +85,8 @@ const styles = StyleSheet.create({
     fontFamily: 'monospace',
   },
   copyButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
     paddingVertical: spacing.xs,
     paddingHorizontal: spacing.md,
     borderRadius: borderRadius.full,

@@ -1,22 +1,29 @@
 /**
  * SettingsScreen — Vigilix
- * Clean, consumer-friendly settings with grouped cards.
+ * Preferences and application configuration matching the visual reference design,
+ * featuring interactive Light/Dark appearance segmented controls, video quality options,
+ * real-time system connection badges, and account management.
  */
 
-import React, { useCallback } from 'react';
+import React, { useCallback, useState } from 'react';
 import {
   View, Text, StyleSheet, ScrollView, StatusBar,
-  TouchableOpacity, Switch, Alert, Image,
+  TouchableOpacity, Alert, Switch,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useTheme } from '../design/ThemeContext';
 import { spacing, radii, typography } from '../design/tokens';
 import { VCard } from '../components/ui/VCard';
-import { VIconButton } from '../components/ui/VIconButton';
-import { useFadeIn, useSlideUp } from '../design/animations';
-import { Animated } from 'react-native';
+import { VButton } from '../components/ui/VButton';
 import { useAuthStore } from '../store/authStore';
+import { useAppStore } from '../store/appStore';
+import socketService from '../services/socketService';
 import updateService, { APP_VERSION } from '../services/updateService';
+import type { VideoQualityPreset } from '../types';
+import {
+  Sun, Moon, ChevronRight, RefreshCw, MoreHorizontal,
+  Shield, Check, User,
+} from 'lucide-react-native';
 
 interface SettingsScreenProps {
   onBack: () => void;
@@ -24,13 +31,32 @@ interface SettingsScreenProps {
 }
 
 export function SettingsScreen({ onBack, onLogout }: SettingsScreenProps) {
-  const { theme, isDark, toggleTheme } = useTheme();
+  const { theme, isDark, themeMode, setThemeMode } = useTheme();
   const { user, logout, isAuthenticated } = useAuthStore();
-  const headerOpacity = useFadeIn(0);
-  const contentAnim = useSlideUp(100, 20);
+  const { videoQuality, setVideoQuality, autoReconnect, setAutoReconnect } = useAppStore();
+  const [followSystem, setFollowSystem] = useState(false);
+
+  const qualityLabels: Record<VideoQualityPreset, string> = {
+    low: '480p SD',
+    medium: '720p HD',
+    high: '1080p FHD',
+  };
+
+  const handleSelectResolution = useCallback(() => {
+    Alert.alert(
+      'Stream Resolution',
+      'Select video streaming resolution for camera and viewer:',
+      [
+        { text: '480p SD (Low bandwidth)', onPress: () => setVideoQuality('low') },
+        { text: '720p HD (Recommended)', onPress: () => setVideoQuality('medium') },
+        { text: '1080p FHD (High fidelity)', onPress: () => setVideoQuality('high') },
+        { text: 'Cancel', style: 'cancel' },
+      ]
+    );
+  }, [setVideoQuality]);
 
   const handleLogout = useCallback(() => {
-    Alert.alert('Logout', 'Are you sure you want to sign out?', [
+    Alert.alert('Sign Out', 'Are you sure you want to sign out from Vigilix?', [
       { text: 'Cancel', style: 'cancel' },
       {
         text: 'Sign Out',
@@ -43,256 +69,471 @@ export function SettingsScreen({ onBack, onLogout }: SettingsScreenProps) {
     ]);
   }, [logout, onLogout]);
 
+  const isServerConnected = socketService.isConnected();
+
   return (
     <View style={[styles.container, { backgroundColor: theme.bg.primary }]}>
-      <StatusBar barStyle={theme.statusBar} />
+      <StatusBar barStyle={theme.statusBar} backgroundColor={theme.bg.primary} />
       <SafeAreaView style={{ flex: 1 }}>
         <ScrollView
           contentContainerStyle={styles.scrollContent}
           showsVerticalScrollIndicator={false}
         >
-          {/* Header */}
-          <Animated.View style={[styles.header, { opacity: headerOpacity }]}>
-            <Text style={[styles.title, { color: theme.text.primary }]}>Settings</Text>
-          </Animated.View>
-
-          <Animated.View style={contentAnim}>
-            {/* Appearance */}
-            <Text style={[styles.sectionLabel, { color: theme.text.tertiary }]}>
-              Appearance
-            </Text>
-            <VCard>
-              <SettingRow
-                icon="🌙"
-                label="Dark Mode"
-                right={
-                  <Switch
-                    value={isDark}
-                    onValueChange={toggleTheme}
-                    trackColor={{ false: '#D1D5DB', true: theme.accent.primary }}
-                    thumbColor="#FFF"
-                  />
-                }
-              />
-            </VCard>
-
-            {/* Video */}
-            <Text style={[styles.sectionLabel, { color: theme.text.tertiary }]}>
-              Video Quality
-            </Text>
-            <VCard>
-              <SettingRow icon="📹" label="Resolution" value="720p HD" />
-              <Divider />
-              <SettingRow icon="📊" label="Max Bitrate" value="Auto" />
-              <Divider />
-              <SettingRow icon="🎯" label="Frame Rate" value="30 fps" />
-            </VCard>
-
-            {/* Connection */}
-            <Text style={[styles.sectionLabel, { color: theme.text.tertiary }]}>
-              Connection
-            </Text>
-            <VCard>
-              <SettingRow
-                icon="🔄"
-                label="Auto-Reconnect"
-                right={
-                  <Switch
-                    value={true}
-                    onValueChange={() => {}}
-                    trackColor={{ false: '#D1D5DB', true: theme.accent.primary }}
-                    thumbColor="#FFF"
-                  />
-                }
-              />
-              <Divider />
-              <SettingRow icon="📡" label="Server" value="Auto" />
-            </VCard>
-
-            {/* About */}
-            <Text style={[styles.sectionLabel, { color: theme.text.tertiary }]}>
-              About
-            </Text>
-            <VCard>
-              <View style={styles.aboutHeader}>
-                <Image
-                  source={require('../../assets/vigilix-logo.png')}
-                  style={styles.aboutLogo}
-                  resizeMode="contain"
-                />
-                <View>
-                  <Text style={[styles.aboutName, { color: theme.text.primary }]}>Vigilix</Text>
-                  <Text style={[styles.aboutVersion, { color: theme.text.tertiary }]}>
-                    Version {APP_VERSION}
-                  </Text>
-                </View>
-              </View>
-              <Divider />
-              <TouchableOpacity onPress={() => updateService.checkForUpdate(true)}>
-                <SettingRow icon="🔄" label="Check for Updates" arrow />
-              </TouchableOpacity>
-              <Divider />
-              <SettingRow icon="📜" label="Privacy Policy" arrow />
-              <Divider />
-              <SettingRow icon="📄" label="Terms of Service" arrow />
-              <Divider />
-              <SettingRow icon="💬" label="Send Feedback" arrow />
-            </VCard>
-          </Animated.View>
-
-          {/* Account */}
-          {isAuthenticated && (
-            <Animated.View style={[{ marginBottom: spacing['6'] }, {
-              opacity: contentAnim.opacity,
-              transform: contentAnim.transform,
-            }]}>
-              <Text style={[styles.sectionLabel, { color: theme.text.tertiary }]}>
-                Account
+          {/* Top Header (.top) */}
+          <View style={styles.top}>
+            <View>
+              <Text style={[styles.kicker, { color: theme.accent.primary }]}>PREFERENCES</Text>
+              <Text style={[styles.title, { color: theme.text.primary }]}>Settings</Text>
+              <Text style={[styles.sub, { color: theme.text.secondary }]}>
+                Vigilix · v{APP_VERSION}
               </Text>
-              <VCard>
-                <View style={styles.aboutHeader}>
-                  <View style={[styles.avatarCircle, { backgroundColor: theme.accent.primary }]}>
+            </View>
+
+            <TouchableOpacity
+              style={[
+                styles.iconButton,
+                {
+                  backgroundColor: theme.surface.card,
+                  borderColor: theme.border.primary,
+                },
+              ]}
+              onPress={() => updateService.checkForUpdate(true)}
+              activeOpacity={0.7}
+            >
+              <MoreHorizontal size={18} color={theme.text.primary} />
+            </TouchableOpacity>
+          </View>
+
+          {/* 1. Appearance Block (.card.pad.settingBlock) */}
+          <VCard style={styles.settingBlock}>
+            <Text style={[styles.cardKicker, { color: theme.accent.primary }]}>APPEARANCE</Text>
+
+            {/* Theme Row with Segmented Switch */}
+            <View style={[styles.settingRow, { borderBottomColor: theme.border.primary }]}>
+              <View style={styles.settingTextCol}>
+                <Text style={[styles.smallTitle, { color: theme.text.primary }]}>Theme</Text>
+                <Text style={[styles.tinyMuted, { color: theme.text.secondary }]}>
+                  Light is the default. Dark follows your preference.
+                </Text>
+              </View>
+
+              <View
+                style={[
+                  styles.appearanceSwitch,
+                  {
+                    borderColor: theme.border.primary,
+                    backgroundColor: theme.surface.input,
+                  },
+                ]}
+              >
+                <TouchableOpacity
+                  style={[
+                    styles.appearanceBtn,
+                    themeMode === 'light' && [
+                      styles.appearanceBtnSel,
+                      {
+                        backgroundColor: theme.surface.card,
+                        shadowColor: '#000',
+                        shadowOffset: { width: 0, height: 1 },
+                        shadowOpacity: 0.1,
+                        shadowRadius: 2,
+                        elevation: 1,
+                      },
+                    ],
+                  ]}
+                  onPress={() => setThemeMode('light')}
+                  activeOpacity={0.8}
+                >
+                  <Text
+                    style={[
+                      styles.appearanceText,
+                      {
+                        color: themeMode === 'light' ? theme.text.primary : theme.text.tertiary,
+                        fontFamily: themeMode === 'light' ? typography.fontFamily.semibold : typography.fontFamily.medium,
+                      },
+                    ]}
+                  >
+                    Light
+                  </Text>
+                </TouchableOpacity>
+
+                <TouchableOpacity
+                  style={[
+                    styles.appearanceBtn,
+                    themeMode === 'dark' && [
+                      styles.appearanceBtnSel,
+                      {
+                        backgroundColor: theme.surface.card,
+                        shadowColor: '#000',
+                        shadowOffset: { width: 0, height: 1 },
+                        shadowOpacity: 0.1,
+                        shadowRadius: 2,
+                        elevation: 1,
+                      },
+                    ],
+                  ]}
+                  onPress={() => setThemeMode('dark')}
+                  activeOpacity={0.8}
+                >
+                  <Text
+                    style={[
+                      styles.appearanceText,
+                      {
+                        color: themeMode === 'dark' ? theme.text.primary : theme.text.tertiary,
+                        fontFamily: themeMode === 'dark' ? typography.fontFamily.semibold : typography.fontFamily.medium,
+                      },
+                    ]}
+                  >
+                    Dark
+                  </Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+
+            {/* System Appearance Row */}
+            <View style={[styles.settingRow, { borderBottomWidth: 0 }]}>
+              <View style={styles.settingTextCol}>
+                <Text style={[styles.smallTitle, { color: theme.text.primary }]}>System appearance</Text>
+                <Text style={[styles.tinyMuted, { color: theme.text.secondary }]}>
+                  Use Vigilix's selected theme
+                </Text>
+              </View>
+
+              <Switch
+                value={followSystem}
+                onValueChange={setFollowSystem}
+                trackColor={{ false: theme.border.primary, true: theme.accent.primary }}
+                thumbColor="#FFFFFF"
+              />
+            </View>
+          </VCard>
+
+          {/* 2. Experience Block (.card.pad.settingBlock) */}
+          <VCard style={styles.settingBlock}>
+            <Text style={[styles.cardKicker, { color: theme.accent.primary }]}>EXPERIENCE</Text>
+
+            {/* Resolution */}
+            <TouchableOpacity
+              style={[styles.settingRow, { borderBottomColor: theme.border.primary }]}
+              onPress={handleSelectResolution}
+              activeOpacity={0.7}
+            >
+              <View style={styles.settingTextCol}>
+                <Text style={[styles.smallTitle, { color: theme.text.primary }]}>Resolution</Text>
+                <Text style={[styles.tinyMuted, { color: theme.text.secondary }]}>
+                  Video stream quality
+                </Text>
+              </View>
+
+              <View
+                style={[
+                  styles.selectPill,
+                  {
+                    backgroundColor: theme.surface.input,
+                    borderColor: theme.border.primary,
+                  },
+                ]}
+              >
+                <Text style={[styles.selectText, { color: theme.text.primary }]}>
+                  {qualityLabels[videoQuality]}
+                </Text>
+              </View>
+            </TouchableOpacity>
+
+            {/* Bitrate */}
+            <View style={[styles.settingRow, { borderBottomColor: theme.border.primary }]}>
+              <View style={styles.settingTextCol}>
+                <Text style={[styles.smallTitle, { color: theme.text.primary }]}>Bitrate</Text>
+                <Text style={[styles.tinyMuted, { color: theme.text.secondary }]}>
+                  Adaptive
+                </Text>
+              </View>
+
+              <View
+                style={[
+                  styles.selectPill,
+                  {
+                    backgroundColor: theme.surface.input,
+                    borderColor: theme.border.primary,
+                  },
+                ]}
+              >
+                <Text style={[styles.selectText, { color: theme.text.primary }]}>Auto</Text>
+              </View>
+            </View>
+
+            {/* Frame rate */}
+            <View style={[styles.settingRow, { borderBottomColor: theme.border.primary }]}>
+              <View style={styles.settingTextCol}>
+                <Text style={[styles.smallTitle, { color: theme.text.primary }]}>Frame rate</Text>
+                <Text style={[styles.tinyMuted, { color: theme.text.secondary }]}>
+                  Target frame rate
+                </Text>
+              </View>
+
+              <View
+                style={[
+                  styles.selectPill,
+                  {
+                    backgroundColor: theme.surface.input,
+                    borderColor: theme.border.primary,
+                  },
+                ]}
+              >
+                <Text style={[styles.selectText, { color: theme.text.primary }]}>30 fps</Text>
+              </View>
+            </View>
+
+            {/* Auto reconnect */}
+            <View style={[styles.settingRow, { borderBottomWidth: 0 }]}>
+              <View style={styles.settingTextCol}>
+                <Text style={[styles.smallTitle, { color: theme.text.primary }]}>Auto reconnect</Text>
+                <Text style={[styles.tinyMuted, { color: theme.text.secondary }]}>
+                  Recover from short network drops
+                </Text>
+              </View>
+
+              <Switch
+                value={autoReconnect}
+                onValueChange={setAutoReconnect}
+                trackColor={{ false: theme.border.primary, true: theme.accent.primary }}
+                thumbColor="#FFFFFF"
+              />
+            </View>
+          </VCard>
+
+          {/* 3. System Block (.card.pad.settingBlock) */}
+          <VCard style={styles.settingBlock}>
+            <Text style={[styles.cardKicker, { color: theme.accent.primary }]}>SYSTEM</Text>
+
+            {/* Server connection */}
+            <View style={[styles.settingRow, { borderBottomColor: theme.border.primary }]}>
+              <Text style={[styles.smallTitle, { color: theme.text.primary }]}>Server connection</Text>
+              <View style={styles.badgePill}>
+                <View
+                  style={[
+                    styles.statusDot,
+                    { backgroundColor: isServerConnected ? theme.status.success : theme.status.warning },
+                  ]}
+                />
+                <Text
+                  style={[
+                    styles.badgeText,
+                    { color: isServerConnected ? theme.status.success : theme.status.warning },
+                  ]}
+                >
+                  {isServerConnected ? 'Connected' : 'Offline'}
+                </Text>
+              </View>
+            </View>
+
+            {/* Background streaming */}
+            <View style={[styles.settingRow, { borderBottomColor: theme.border.primary }]}>
+              <Text style={[styles.smallTitle, { color: theme.text.primary }]}>Background streaming</Text>
+              <View style={styles.badgePill}>
+                <Text style={[styles.badgeText, { color: theme.text.secondary }]}>Enabled</Text>
+              </View>
+            </View>
+
+            {/* Push-to-wake */}
+            <View style={[styles.settingRow, { borderBottomWidth: 0 }]}>
+              <Text style={[styles.smallTitle, { color: theme.text.primary }]}>Push-to-wake</Text>
+              <View style={styles.badgePill}>
+                <Text style={[styles.badgeText, { color: theme.text.secondary }]}>Enabled</Text>
+              </View>
+            </View>
+          </VCard>
+
+          {/* 4. Account Profile Info (if authenticated) */}
+          {isAuthenticated && user && (
+            <VCard style={styles.settingBlock}>
+              <Text style={[styles.cardKicker, { color: theme.accent.primary }]}>ACCOUNT</Text>
+              <View style={[styles.settingRow, { borderBottomWidth: 0 }]}>
+                <View style={styles.accountRow}>
+                  <View style={[styles.avatar, { backgroundColor: theme.accent.primary }]}>
                     <Text style={styles.avatarText}>
-                      {user?.name?.charAt(0)?.toUpperCase() || '?'}
+                      {user.name?.charAt(0)?.toUpperCase() || 'U'}
                     </Text>
                   </View>
                   <View>
-                    <Text style={[styles.aboutName, { color: theme.text.primary }]}>{user?.name}</Text>
-                    <Text style={[styles.aboutVersion, { color: theme.text.tertiary }]}>{user?.email}</Text>
+                    <Text style={[styles.accountName, { color: theme.text.primary }]}>{user.name}</Text>
+                    <Text style={[styles.accountEmail, { color: theme.text.secondary }]}>{user.email}</Text>
                   </View>
                 </View>
-                <Divider />
-                <TouchableOpacity onPress={handleLogout}>
-                  <SettingRow icon="🚪" label="Sign Out" arrow />
-                </TouchableOpacity>
-              </VCard>
-            </Animated.View>
+              </View>
+            </VCard>
           )}
+
+          {/* 5. Sign Out Button (.danger in reference HTML) */}
+          <View style={{ marginTop: 14 }}>
+            <VButton
+              title="Sign out"
+              variant="danger"
+              size="lg"
+              fullWidth
+              onPress={handleLogout}
+            />
+          </View>
+
+          <View style={{ height: 110 }} />
         </ScrollView>
       </SafeAreaView>
     </View>
   );
 }
 
-// ─── Setting Row ─────────────────────────────────────────────────
-
-function SettingRow({
-  icon, label, value, right, arrow,
-}: {
-  icon: string; label: string; value?: string;
-  right?: React.ReactNode; arrow?: boolean;
-}) {
-  const { theme } = useTheme();
-
-  return (
-    <TouchableOpacity
-      activeOpacity={arrow ? 0.6 : 1}
-      style={styles.settingRow}
-      disabled={!arrow}
-    >
-      <View style={styles.settingLeft}>
-        <Text style={{ fontSize: 18 }}>{icon}</Text>
-        <Text style={[styles.settingLabel, { color: theme.text.primary }]}>{label}</Text>
-      </View>
-      {value && (
-        <Text style={[styles.settingValue, { color: theme.text.tertiary }]}>{value}</Text>
-      )}
-      {right}
-      {arrow && (
-        <Text style={{ color: theme.text.tertiary, fontSize: 16 }}>›</Text>
-      )}
-    </TouchableOpacity>
-  );
-}
-
-function Divider() {
-  const { theme } = useTheme();
-  return <View style={[styles.divider, { backgroundColor: theme.border.primary }]} />;
-}
-
 const styles = StyleSheet.create({
-  container: { flex: 1 },
-  scrollContent: {
-    padding: spacing['5'],
-    paddingBottom: spacing['20'],
-    gap: spacing['2'],
-  },
-
-  header: {
-    marginBottom: spacing['4'],
-    marginTop: spacing['2'],
-  },
-  title: {
-    fontSize: typography.size['3xl'],
-    fontFamily: typography.fontFamily.bold,
-    letterSpacing: -0.5,
-  },
-
-  sectionLabel: {
-    fontSize: typography.size.xs,
-    fontFamily: typography.fontFamily.semibold,
-    textTransform: 'uppercase',
-    letterSpacing: typography.letterSpacing.widest,
-    marginTop: spacing['5'],
-    marginBottom: spacing['2'],
-    marginLeft: spacing['1'],
-  },
-
-  settingRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingVertical: spacing['3'],
-  },
-  settingLeft: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing['3'],
+  container: {
     flex: 1,
   },
-  settingLabel: {
-    fontSize: typography.size.base,
+  scrollContent: {
+    paddingHorizontal: spacing['5'],
+    paddingTop: spacing['3'],
+  },
+
+  // Top (.top)
+  top: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'flex-start',
+    marginBottom: 12,
+  },
+  kicker: {
+    fontSize: 10,
+    fontFamily: typography.fontFamily.bold,
+    letterSpacing: 1.2,
+    textTransform: 'uppercase',
+  },
+  title: {
+    fontSize: 24,
+    fontFamily: typography.fontFamily.bold,
+    letterSpacing: -0.5,
+    marginTop: 2,
+  },
+  sub: {
+    fontSize: 11,
+    fontFamily: typography.fontFamily.regular,
+    marginTop: 3,
+  },
+  iconButton: {
+    width: 36,
+    height: 36,
+    borderRadius: 12,
+    borderWidth: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+
+  // Setting block (.settingBlock)
+  settingBlock: {
+    marginTop: 10,
+    padding: 14,
+  },
+  cardKicker: {
+    fontSize: 9,
+    fontFamily: typography.fontFamily.bold,
+    letterSpacing: 1.2,
+    marginBottom: 8,
+    textTransform: 'uppercase',
+  },
+  settingRow: {
+    paddingVertical: 12,
+    borderBottomWidth: 1,
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    gap: 8,
+  },
+  settingTextCol: {
+    flex: 1,
+  },
+  smallTitle: {
+    fontSize: 12,
     fontFamily: typography.fontFamily.medium,
   },
-  settingValue: {
-    fontSize: typography.size.md,
+  tinyMuted: {
+    fontSize: 10,
     fontFamily: typography.fontFamily.regular,
+    marginTop: 3,
+    lineHeight: 14,
   },
 
-  divider: {
-    height: StyleSheet.hairlineWidth,
-    marginLeft: spacing['10'],
+  // Appearance switch (.appearanceSwitch)
+  appearanceSwitch: {
+    flexDirection: 'row',
+    padding: 3,
+    borderRadius: 10,
+    borderWidth: 1,
+  },
+  appearanceBtn: {
+    paddingVertical: 6,
+    paddingHorizontal: 12,
+    borderRadius: 7,
+  },
+  appearanceBtnSel: {
+    // Styling handled via background + shadow
+  },
+  appearanceText: {
+    fontSize: 11,
   },
 
-  aboutHeader: {
+  // Select pill (.select)
+  selectPill: {
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 10,
+    borderWidth: 1,
+  },
+  selectText: {
+    fontSize: 10,
+    fontFamily: typography.fontFamily.medium,
+  },
+
+  // Badge pill
+  badgePill: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: spacing['3'],
-    paddingVertical: spacing['2'],
+    gap: 6,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 8,
+    backgroundColor: 'rgba(255,255,255,0.06)',
   },
-  aboutLogo: {
-    width: 44,
-    height: 44,
-    borderRadius: radii.lg,
+  statusDot: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
   },
-  aboutName: {
-    fontSize: typography.size.lg,
-    fontFamily: typography.fontFamily.bold,
+  badgeText: {
+    fontSize: 10,
+    fontFamily: typography.fontFamily.medium,
   },
-  aboutVersion: {
-    fontSize: typography.size.sm,
-    fontFamily: typography.fontFamily.regular,
-  },
-  avatarCircle: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    justifyContent: 'center',
+
+  // Account
+  accountRow: {
+    flexDirection: 'row',
     alignItems: 'center',
+    gap: 12,
+  },
+  avatar: {
+    width: 38,
+    height: 38,
+    borderRadius: 19,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   avatarText: {
-    fontSize: 20,
-    fontFamily: typography.fontFamily.bold,
     color: '#FFFFFF',
+    fontSize: 16,
+    fontFamily: typography.fontFamily.bold,
+  },
+  accountName: {
+    fontSize: 13,
+    fontFamily: typography.fontFamily.semibold,
+  },
+  accountEmail: {
+    fontSize: 11,
+    fontFamily: typography.fontFamily.regular,
+    marginTop: 2,
   },
 });

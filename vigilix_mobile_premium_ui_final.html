@@ -1,0 +1,543 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Vigilix — Mobile UI/UX Exploration</title>
+<style>
+:root{
+  --bg:#0b0c0f;
+  --bg2:#111318;
+  --surface:rgba(255,255,255,.055);
+  --surface2:rgba(255,255,255,.085);
+  --line:rgba(255,255,255,.095);
+  --text:#f5f6f8;
+  --muted:#9198a3;
+  --accent:#6f9cff;
+  --accent2:#8fb3ff;
+  --success:#56d493;
+  --danger:#ff6f74;
+  --warning:#eebd61;
+  --icon:#d9dde4;
+  --phone:#17191e;
+  --shadow:0 30px 90px rgba(0,0,0,.45);
+  --r:22px;
+}
+
+[data-theme="light"]{
+  --bg:#f5f6f8;--bg2:#ffffff;--surface:rgba(255,255,255,.78);--surface2:rgba(255,255,255,.94);
+  --line:rgba(18,23,31,.09);--text:#111318;--muted:#707782;--accent:#3976ff;--accent2:#6a98ff;
+  --success:#22a46a;--danger:#d9555e;--warning:#ad7a14;--icon:#2f3540;--phone:#e6e8ec;
+  --shadow:0 26px 80px rgba(26,34,46,.14)
+}
+
+[data-theme="silver"]{
+  --bg:#eef0f3;--bg2:#f8f9fb;--surface:rgba(255,255,255,.70);--surface2:rgba(255,255,255,.92);
+  --line:rgba(21,25,32,.10);--text:#121419;--muted:#6f7580;--accent:#3973ff;--accent2:#5d8cff;
+  --success:#24a96e;--danger:#d8545f;--warning:#ab7712;--icon:#2f353f;--phone:#e7e9ed;--shadow:0 28px 75px rgba(33,42,55,.18)
+}
+
+[data-theme="dark"]{
+  --bg:#0a0b0d;--bg2:#111318;--surface:rgba(255,255,255,.055);--surface2:rgba(255,255,255,.085);
+  --line:rgba(255,255,255,.095);--text:#f4f5f7;--muted:#9299a3;--accent:#6f9cff;--accent2:#91b4ff;
+  --success:#56d493;--danger:#ff6f74;--warning:#efbf62;--icon:#d9dee6;--phone:#17191e;
+  --shadow:0 30px 90px rgba(0,0,0,.48)
+}
+
+[data-theme="aurora"]{
+  --bg:#090b12;--bg2:#10131d;--surface:rgba(255,255,255,.052);--surface2:rgba(255,255,255,.085);
+  --line:rgba(255,255,255,.09);--text:#f4f5fb;--muted:#9aa0b0;--accent:#8c82ff;--accent2:#aaa3ff;
+  --success:#59d89a;--danger:#ff737e;--warning:#edc35c;--icon:#dadcef;--phone:#141722
+}
+*{box-sizing:border-box}
+html,body{margin:0;min-height:100%;font-family:-apple-system,BlinkMacSystemFont,"SF Pro Display","SF Pro Text","Inter",system-ui,sans-serif;background:
+radial-gradient(circle at 18% 0%,color-mix(in srgb,var(--accent) 10%,transparent),transparent 28%),
+radial-gradient(circle at 88% 96%,color-mix(in srgb,var(--accent2) 7%,transparent),transparent 26%),var(--bg);color:var(--text)}
+button,input{font:inherit}
+button{cursor:pointer}
+svg{display:block}
+.app{
+  min-height:100vh;display:grid;grid-template-columns:270px 1fr;gap:26px;padding:22px;
+}
+.left{
+  position:sticky;top:22px;height:calc(100vh - 44px);max-height:900px;
+  background:color-mix(in srgb,var(--bg2) 88%,transparent);border:1px solid var(--line);border-radius:26px;
+  backdrop-filter:blur(24px);box-shadow:var(--shadow);padding:18px;
+}
+.brand{display:flex;align-items:center;gap:11px;padding:4px 4px 18px}
+.brandmark{width:34px;height:34px;border-radius:11px;background:linear-gradient(145deg,var(--accent2),var(--accent));display:grid;place-items:center;color:white;box-shadow:0 10px 28px color-mix(in srgb,var(--accent) 25%,transparent)}
+.brandname{font-weight:700;letter-spacing:-.03em}.brandsub{color:var(--muted);font-size:10px;margin-top:2px}
+.navlabel{font-size:10px;letter-spacing:.13em;text-transform:uppercase;color:var(--muted);padding:12px 7px 8px}
+.nav{display:flex;flex-direction:column;gap:4px}
+.nav button{border:0;background:transparent;color:var(--muted);padding:11px 10px;border-radius:13px;text-align:left;display:flex;align-items:center;gap:10px;font-size:12px}
+.nav button.active{background:var(--surface2);color:var(--text);box-shadow:inset 0 0 0 1px var(--line)}
+.navico{width:17px;height:17px}
+.sidebottom{position:absolute;left:18px;right:18px;bottom:18px}
+.themeRow{display:grid;grid-template-columns:repeat(3,1fr);gap:7px;margin-top:8px}
+.themeBtn{height:30px;border-radius:10px;border:1px solid var(--line)}
+.t1{background:linear-gradient(140deg,#58627b,#0b0c0f)}.t2{background:linear-gradient(140deg,#fff,#bcc2ca)}.t3{background:linear-gradient(140deg,#8f85ff,#0b0b12)}
+
+.work{display:flex;justify-content:center;align-items:flex-start;min-width:0}
+.stage{width:min(1250px,100%);display:grid;grid-template-columns:minmax(0,1fr) 370px;gap:22px;align-items:start}
+.info{padding:15px 4px}
+.kicker{font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.14em}
+h1{font-size:32px;letter-spacing:-.05em;line-height:1.04;margin:7px 0 0}
+.lede{font-size:13px;color:var(--muted);line-height:1.6;max-width:650px;margin-top:10px}
+.chips{display:flex;flex-wrap:wrap;gap:7px;margin-top:15px}.chip{font-size:10px;padding:7px 9px;border-radius:999px;border:1px solid var(--line);background:var(--surface);color:var(--muted)}
+.btnrow{display:flex;gap:8px;margin-top:17px;flex-wrap:wrap}.primary,.ghost,.danger{border-radius:13px;padding:10px 13px;border:1px solid var(--line);font-size:11px;color:var(--text);background:var(--surface)}
+.primary{color:white;border-color:transparent;background:linear-gradient(135deg,var(--accent2),var(--accent));box-shadow:0 10px 26px color-mix(in srgb,var(--accent) 18%,transparent)}
+.danger{color:var(--danger);background:color-mix(in srgb,var(--danger) 10%,var(--surface))}
+.note{margin-top:16px;padding:13px 14px;border-radius:16px;border:1px solid var(--line);background:var(--surface);color:var(--muted);font-size:10px;line-height:1.55}
+
+.phoneWrap{display:flex;justify-content:center;position:sticky;top:22px}
+.phone{
+  width:360px;height:780px;border-radius:42px;background:#050608;padding:9px;box-shadow:0 45px 120px rgba(0,0,0,.58),0 0 0 1px rgba(255,255,255,.09);
+}
+.phoneScreen{
+  width:100%;height:100%;border-radius:34px;overflow:hidden;position:relative;background:
+  radial-gradient(circle at 50% -8%,color-mix(in srgb,var(--accent) 13%,transparent),transparent 32%),var(--bg);
+}
+.statusbar{height:33px;padding:10px 18px 0;display:flex;justify-content:space-between;align-items:flex-start;font-size:9px;z-index:10;position:relative}
+.island{position:absolute;top:7px;left:50%;transform:translateX(-50%);width:90px;height:22px;border-radius:15px;background:#050608}
+.screenBody{height:calc(100% - 33px);overflow:hidden;position:relative;padding:0 17px 20px}
+.screen{display:none;animation:appear .28s ease both}.screen.active{display:block}
+@keyframes appear{from{opacity:0;transform:translateY(7px)}to{opacity:1;transform:none}}
+.top{display:flex;align-items:center;justify-content:space-between;padding:14px 0 13px}
+.title{font-size:23px;letter-spacing:-.04em;font-weight:650}.sub{font-size:10px;color:var(--muted);margin-top:4px}
+.iconButton{width:36px;height:36px;border-radius:13px;border:1px solid var(--line);background:var(--surface);color:var(--icon);display:grid;place-items:center}
+.iconButton.small{width:32px;height:32px;border-radius:11px}
+.card{border:1px solid var(--line);border-radius:var(--r);background:var(--surface);backdrop-filter:blur(20px);box-shadow:0 18px 50px rgba(0,0,0,.18)}
+.pad{padding:15px}
+.row{display:flex;align-items:center;justify-content:space-between;gap:10px}
+.muted{color:var(--muted)}.tiny{font-size:9px}.small{font-size:11px}
+.badge{display:inline-flex;align-items:center;gap:6px;padding:7px 9px;border-radius:999px;background:var(--surface2);border:1px solid var(--line);font-size:9px;color:var(--muted)}
+.dot{width:6px;height:6px;border-radius:50%;background:var(--success);box-shadow:0 0 10px var(--success)}.dot.pulse{animation:pulse 1.2s ease infinite}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.25}}
+.sectionTitle{font-size:15px;font-weight:600;letter-spacing:-.02em}
+.sectionHead{display:flex;align-items:center;justify-content:space-between;margin:17px 0 9px}
+.link{border:0;background:none;color:var(--accent2);font-size:10px;padding:0}
+
+.heroWelcome{padding:19px 0 9px}.heroWelcome h2{font-size:34px;line-height:.98;letter-spacing:-.06em;margin:10px 0 0;max-width:285px}
+.heroWelcome p{color:var(--muted);font-size:11px;line-height:1.55;margin-top:12px}
+.artbox{height:240px;margin-top:17px;border-radius:25px;border:1px solid var(--line);background:
+radial-gradient(circle at 50% 46%,color-mix(in srgb,var(--accent) 20%,transparent),transparent 28%),
+linear-gradient(155deg,color-mix(in srgb,var(--accent) 8%,transparent),transparent 55%),var(--surface);position:relative;overflow:hidden}
+.mockPhone{position:absolute;left:50%;top:51%;transform:translate(-50%,-50%);width:120px;height:185px;border-radius:24px;background:#12151b;box-shadow:0 30px 55px rgba(0,0,0,.45),inset 0 0 0 1px rgba(255,255,255,.08);padding:6px}
+.mockPhone:before{content:"";position:absolute;inset:6px;border-radius:19px;background:linear-gradient(150deg,#172237,#060a11 70%)}
+.mockLens{position:absolute;left:50%;top:31%;transform:translate(-50%,-50%);width:42px;height:42px;border-radius:50%;border:5px solid rgba(255,255,255,.06);background:radial-gradient(circle,#9ab7f7 0 16%,#2a4773 17% 36%,#08101b 37%)}
+.mockLine{position:absolute;bottom:20px;left:50%;transform:translateX(-50%);width:46px;height:3px;border-radius:99px;background:rgba(255,255,255,.16)}
+.featureRow{display:grid;grid-template-columns:repeat(2,1fr);gap:8px;margin-top:9px}
+.feature{padding:11px;border:1px solid var(--line);border-radius:15px;background:var(--surface)}
+.feature .fi{width:28px;height:28px;border-radius:9px;background:color-mix(in srgb,var(--accent) 13%,transparent);display:grid;place-items:center;color:var(--accent2)}
+.feature b{display:block;font-size:10px;margin-top:8px}.feature span{font-size:9px;color:var(--muted);line-height:1.35;display:block;margin-top:4px}
+.bottomCTA{position:absolute;left:17px;right:17px;bottom:19px;display:flex;flex-direction:column;gap:8px}
+
+.authHead{text-align:center;padding:45px 0 17px}.authHead h2{font-size:29px;letter-spacing:-.05em;margin:8px 0 0}.authHead p{font-size:10px;color:var(--muted);margin-top:7px}
+.segment{display:flex;padding:4px;border:1px solid var(--line);background:var(--surface);border-radius:14px;margin-bottom:12px}.segment button{flex:1;border:0;background:transparent;color:var(--muted);padding:9px;border-radius:10px;font-size:10px}.segment .sel{background:var(--surface2);color:var(--text)}
+.field{margin:9px 0}.field label{font-size:9px;color:var(--muted);display:block;margin:0 0 6px}.input{width:100%;border:1px solid var(--line);border-radius:13px;padding:11px 12px;background:var(--surface2);color:var(--text);outline:none;font-size:11px}.input:focus{border-color:color-mix(in srgb,var(--accent) 65%,var(--line));box-shadow:0 0 0 4px color-mix(in srgb,var(--accent) 10%,transparent)}
+.roleGrid{display:grid;grid-template-columns:1fr;gap:8px;margin-top:15px}.role{padding:15px;border:1px solid var(--line);border-radius:19px;background:var(--surface)}.role.sel{border-color:color-mix(in srgb,var(--accent) 65%,var(--line));background:color-mix(in srgb,var(--accent) 7%,var(--surface))}.roleI{width:38px;height:38px;border-radius:12px;background:color-mix(in srgb,var(--accent) 12%,transparent);display:grid;place-items:center;color:var(--accent2)}.role h3{font-size:14px;margin:11px 0 5px}.role p{font-size:10px;color:var(--muted);line-height:1.45}
+
+.heroStat{padding:15px}.heroStat .big{font-size:28px;letter-spacing:-.04em;font-weight:650}.metrics{display:flex;gap:7px;flex-wrap:wrap;margin-top:11px}
+.quick{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:10px}.quickCard{padding:14px;min-height:132px;position:relative;overflow:hidden}.quickCard .qicon{width:34px;height:34px;border-radius:11px;display:grid;place-items:center;background:color-mix(in srgb,var(--accent) 11%,transparent);color:var(--accent2)}.quickCard h3{font-size:14px;margin:12px 0 5px}.quickCard p{font-size:9px;color:var(--muted);line-height:1.4}.quickCard .smallbtn{margin-top:11px;width:100%;padding:8px;border:1px solid var(--line);border-radius:10px;background:var(--surface2);color:var(--text);font-size:9px}
+.cameraList{display:flex;flex-direction:column;gap:8px}.cam{padding:10px}.thumb{height:108px;border-radius:15px;border:1px solid var(--line);position:relative;overflow:hidden;background:linear-gradient(145deg,#1d2736,#0a0e14 65%)}.thumb:after{content:"";position:absolute;inset:0;background:linear-gradient(90deg,transparent 32%,rgba(255,255,255,.045) 32.4%,transparent 33%),linear-gradient(0deg,transparent 60%,rgba(255,255,255,.04) 60.4%,transparent 61%)}.camInfo{padding-top:9px}.camName{font-size:12px;font-weight:600}.camSub{font-size:9px;color:var(--muted);margin-top:3px}.camActions{display:flex;gap:6px;margin-top:8px}.camActions button{flex:1;padding:8px;border-radius:10px;font-size:9px;border:1px solid var(--line);background:var(--surface);color:var(--text)}.camActions .primaryMini{background:var(--accent);border-color:transparent;color:white}
+
+.live{height:100%;background:#05080d}.liveScreen{position:absolute;inset:0;background:
+radial-gradient(circle at 55% 45%,rgba(96,128,183,.24),transparent 24%),
+linear-gradient(155deg,#152133,#070b11 60%,#0b1017)}
+.liveTop{position:absolute;left:13px;right:13px;top:14px;display:flex;justify-content:space-between;gap:7px;z-index:2}.hud{padding:8px 9px;border-radius:12px;border:1px solid rgba(255,255,255,.1);background:rgba(4,8,13,.54);backdrop-filter:blur(18px);font-size:9px;color:#e7ebf2}.liveCenter{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);width:100%;text-align:center}.reticle{width:65px;height:65px;border:1px dashed rgba(255,255,255,.18);border-radius:50%;margin:auto;position:relative}.reticle:before,.reticle:after{content:"";position:absolute;background:rgba(255,255,255,.12)}.reticle:before{width:25px;height:1px;left:19px;top:31px}.reticle:after{height:25px;width:1px;left:31px;top:19px}
+.wait{display:inline-block;margin-top:12px;padding:8px 11px;border-radius:999px;background:rgba(5,9,14,.53);border:1px solid rgba(255,255,255,.09);font-size:9px;color:#dfe4eb}
+.controls{position:absolute;bottom:16px;left:50%;transform:translateX(-50%);display:flex;gap:7px;padding:8px;border-radius:18px;background:rgba(5,9,14,.64);border:1px solid rgba(255,255,255,.1);backdrop-filter:blur(22px);z-index:3}.ctl{width:44px;height:44px;border-radius:14px;border:1px solid rgba(255,255,255,.09);background:rgba(255,255,255,.06);color:white;display:grid;place-items:center}.ctl.active{background:color-mix(in srgb,var(--accent) 20%,transparent);border-color:color-mix(in srgb,var(--accent) 55%,transparent);color:var(--accent2)}.ctl.stop{background:color-mix(in srgb,var(--danger) 15%,transparent);color:var(--danger);border-color:color-mix(in srgb,var(--danger) 35%,transparent)}
+.reconnect{position:absolute;left:50%;top:52%;transform:translate(-50%,-50%);text-align:center;padding:16px;border-radius:20px;background:rgba(5,9,14,.58);border:1px solid rgba(255,255,255,.1);backdrop-filter:blur(20px)}.spinner{width:27px;height:27px;border-radius:50%;border:2px solid rgba(255,255,255,.12);border-top-color:var(--accent2);animation:spin .8s linear infinite;margin:auto}.reconnect b{font-size:11px;display:block;margin-top:10px}.reconnect span{font-size:9px;color:var(--muted);display:block;margin-top:5px}@keyframes spin{to{transform:rotate(360deg)}}
+
+.recordGrid{display:grid;grid-template-columns:1fr 1fr;gap:8px}.rec{padding:8px}.recThumb{height:112px;border-radius:13px;background:linear-gradient(150deg,#1c2636,#0b1017);position:relative;overflow:hidden}.tc{position:absolute;right:6px;bottom:6px;padding:4px 5px;border-radius:6px;background:rgba(0,0,0,.45);font-size:8px}.rec h4{font-size:10px;margin:8px 0 3px}.rec p{font-size:8px;color:var(--muted)}
+
+.settingBlock{margin-top:11px}.settingRow{padding:12px 0;border-bottom:1px solid var(--line);display:flex;justify-content:space-between;align-items:center;gap:8px}.settingRow:last-child{border-bottom:0}.toggle{width:38px;height:23px;border-radius:999px;border:1px solid var(--line);background:rgba(255,255,255,.09);position:relative}.toggle:after{content:"";position:absolute;width:17px;height:17px;left:2px;top:2px;border-radius:50%;background:white;transition:.2s}.toggle.on{background:var(--accent);border-color:transparent}.toggle.on:after{transform:translateX(14px)}.select{font-size:9px;padding:8px 9px;border:1px solid var(--line);border-radius:10px;background:var(--surface2)}
+
+.designCard{padding:15px;margin-top:12px}.paletteMini{display:grid;grid-template-columns:repeat(5,1fr);gap:6px;margin-top:11px}.sw{height:35px;border-radius:9px;border:1px solid var(--line)}
+
+.splashHolder{position:absolute;inset:0;display:grid;place-items:center;text-align:center;background:var(--bg);overflow:hidden}.splashGlow{position:absolute;width:280px;height:280px;border-radius:50%;background:radial-gradient(circle,color-mix(in srgb,var(--accent) 28%,transparent),transparent 68%);animation:glow 2.3s ease-in-out infinite}.splashLogo{width:76px;height:76px;border-radius:25px;background:linear-gradient(145deg,var(--accent2),var(--accent));display:grid;place-items:center;color:white;box-shadow:0 25px 65px color-mix(in srgb,var(--accent) 32%,transparent);animation:logo .95s cubic-bezier(.22,.8,.2,1) both}.splashName{font-size:40px;font-weight:700;letter-spacing:-.065em;margin-top:16px;animation:up .7s .1s both}.splashTag{font-size:10px;color:var(--muted);margin-top:6px;animation:up .7s .18s both}.load{width:145px;height:3px;border-radius:999px;background:var(--line);overflow:hidden;margin:23px auto 0}.load span{display:block;height:100%;width:32%;background:var(--accent);animation:load 1.45s infinite ease-in-out}@keyframes glow{0%,100%{transform:scale(.9);opacity:.6}50%{transform:scale(1.08);opacity:1}}@keyframes logo{0%{opacity:0;transform:scale(.7)}65%{opacity:1;transform:scale(1.06)}100%{transform:scale(1)}}@keyframes up{from{opacity:0;transform:translateY(7px)}to{opacity:1;transform:none}}@keyframes load{0%{transform:translateX(-130%)}100%{transform:translateX(500%)}}
+
+.phoneBar{display:flex;position:absolute;left:12px;right:12px;bottom:10px;height:55px;border:1px solid var(--line);border-radius:18px;background:color-mix(in srgb,var(--bg2) 83%,transparent);backdrop-filter:blur(22px);align-items:center;justify-content:space-around;z-index:5}.tab{border:0;background:none;color:var(--muted);font-size:8px;display:flex;flex-direction:column;align-items:center;gap:4px}.tab.active{color:var(--text)}.tab svg{width:18px;height:18px}
+
+@media(max-width:1000px){.app{grid-template-columns:1fr}.left{display:none}.stage{grid-template-columns:1fr}.info{max-width:720px;margin:0 auto}.phoneWrap{position:static}.phone{width:min(360px,92vw);height:min(780px,calc(100vh - 35px));min-height:650px}}
+</style>
+</head>
+<body data-theme="light">
+<div class="app">
+
+  <aside class="left">
+    <div class="brand">
+      <div class="brandmark">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M4 8.5 12 4l8 4.5v7L12 20l-8-4.5z"/><circle cx="12" cy="12" r="3"/></svg>
+      </div>
+      <div><div class="brandname">Vigilix</div><div class="brandsub">Mobile UI exploration</div></div>
+    </div>
+    <div class="navlabel">Mobile screens</div>
+    <nav class="nav">
+      <button data-screen="design"><span class="navico"></span>Design direction</button>
+      <button class="active" data-screen="splash">Splash</button>
+      <button data-screen="welcome">Welcome</button>
+      <button data-screen="auth">Authentication</button>
+      <button data-screen="setup">Device setup</button>
+      <button data-screen="home">Home</button>
+      <button data-screen="camera">Camera</button>
+      <button data-screen="viewer">Viewer</button>
+      <button data-screen="recordings">Recordings</button>
+      <button data-screen="settings">Settings</button>
+    </nav>
+    <div class="sidebottom">
+      <div class="navlabel">Preview theme</div>
+      <div class="small muted">Light is the default app theme. Dark is available from Settings.</div>
+      <div class="themeRow">
+        <button class="themeBtn t1" data-theme="graphite" title="Graphite"></button>
+        <button class="themeBtn t2" data-theme="silver" title="Silver"></button>
+        <button class="themeBtn t3" data-theme="aurora" title="Aurora"></button>
+      </div>
+    </div>
+  </aside>
+
+  <main class="work">
+    <div class="stage">
+      <section class="info">
+        <div class="kicker">Vigilix / mobile-first redesign</div>
+        <h1 id="pageTitle">Design direction</h1>
+        <p class="lede">This version is intentionally built around a narrow phone viewport. The UI uses restrained colors, premium line icons, native-style spacing, soft materials and motion that feels like a polished product rather than a concept dashboard.</p>
+        <div class="chips"><span class="chip">Mobile-first</span><span class="chip">No emojis</span><span class="chip">Premium icons</span><span class="chip">Native feel</span><span class="chip">Dark + Light capable</span></div>
+        <div class="btnrow"><button class="primary" onclick="show('splash')">Replay splash</button><button class="ghost" onclick="cycleTheme()">Change palette</button></div>
+        <div class="note"><b style="color:var(--text)">Design principle:</b> use one primary accent, not five competing colors. Let hierarchy come from typography, spacing, opacity and surface depth. Status colors appear only when the state matters.</div>
+        <div class="card designCard">
+          <div class="row"><div><div class="kicker">Icon language</div><div style="font-size:15px;font-weight:600;margin-top:5px">Monoline system icons</div></div><span class="badge">16–22 px</span></div>
+          <p class="small muted" style="margin-top:9px;line-height:1.5">Use a consistent Lucide-style / SF-symbol-like icon family. Camera, viewer, torch, microphone, recording, battery, wifi, settings, back and navigation icons should all share the same stroke language.</p>
+        </div>
+        <div class="card designCard">
+          <div class="row"><div><div class="kicker">Motion language</div><div style="font-size:15px;font-weight:600;margin-top:5px">Quiet, responsive motion</div></div><span class="badge">200–900 ms</span></div>
+          <p class="small muted" style="margin-top:9px;line-height:1.5">Splash gets the richest animation. Normal navigation stays around 250–350 ms. Live status gets subtle pulses. Avoid motion on every card just for decoration.</p>
+        </div>
+      </section>
+
+      <div class="phoneWrap">
+        <div class="phone">
+          <div class="phoneScreen">
+
+            <!-- SVG ICON DEFINITIONS -->
+            <svg width="0" height="0" style="position:absolute">
+              <defs></defs>
+            </svg>
+
+            <div class="statusbar"><span>9:41</span><span style="display:flex;gap:6px"><span>◦◦◦</span><span>▮</span></span><div class="island"></div></div>
+
+            <div class="screenBody">
+
+              <section class="screen" id="s-design">
+                <div class="top"><div><div class="kicker">Visual system</div><div class="title">Premium mobile UI</div></div><div class="badge">V1 concept</div></div>
+                <div class="card pad">
+                  <div class="row"><div><div class="small">Primary palette</div><div class="muted tiny" style="margin-top:4px">Graphite + soft electric blue</div></div><div class="badge">Selected</div></div>
+                  <div class="paletteMini">
+                    <div class="sw" style="background:#0b0c0f"></div><div class="sw" style="background:#111318"></div><div class="sw" style="background:#6f9cff"></div><div class="sw" style="background:#56d493"></div><div class="sw" style="background:#ff6f74"></div>
+                  </div>
+                </div>
+                <div class="sectionHead"><div class="sectionTitle">Component feel</div></div>
+                <div class="card pad"><div class="row"><span class="small">Primary action</span><button class="primary">Continue</button></div><div class="row" style="margin-top:10px"><span class="small">Status</span><span class="badge"><span class="dot pulse"></span> 2 online</span></div></div>
+                <div class="sectionHead"><div class="sectionTitle">Icon examples</div></div>
+                <div class="featureRow">
+                  <div class="feature"><div class="fi">⌂</div><b>Home</b><span>Simple monoline icon</span></div>
+                  <div class="feature"><div class="fi">◉</div><b>Camera</b><span>Geometric, not emoji</span></div>
+                  <div class="feature"><div class="fi">◌</div><b>Monitor</b><span>Clean system glyph</span></div>
+                  <div class="feature"><div class="fi">⚙</div><b>Settings</b><span>Same visual weight</span></div>
+                </div>
+              </section>
+
+              <section class="screen active" id="s-splash">
+  <div class="splashHolder">
+    <div>
+      <div class="splashGlow"></div>
+      <div class="splashLogo">
+        <svg width="38" height="38" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6">
+          <path d="M4 8.5 12 4l8 4.5v7L12 20l-8-4.5z"/>
+          <circle cx="12" cy="12" r="3"/>
+        </svg>
+      </div>
+      <div class="splashName">Vigilix</div>
+      <div class="splashTag">Private mobile surveillance</div>
+      <div class="load"><span></span></div>
+      <button class="splashSkip" id="splashSkip">Skip</button>
+    </div>
+  </div>
+</section>
+
+              <section class="screen" id="s-welcome">
+                <div class="heroWelcome">
+                  <div class="kicker">Private / connected / intelligent</div>
+                  <h2>Security, built into the phone you already have.</h2>
+                  <p>Turn a spare phone into a live camera and keep a second device as your private monitor.</p>
+                </div>
+                <div class="artbox"><div class="mockPhone"><div class="mockLens"></div><div class="mockLine"></div></div></div>
+                <div class="featureRow">
+                  <div class="feature"><div class="fi">◉</div><b>Live video</b><span>Low-latency device-to-device streaming.</span></div>
+                  <div class="feature"><div class="fi">◌</div><b>Talk back</b><span>Speak through the camera device.</span></div>
+                  <div class="feature"><div class="fi">⌁</div><b>Remote control</b><span>Light and recording from the viewer.</span></div>
+                  <div class="feature"><div class="fi">◐</div><b>Health</b><span>Battery and connection state.</span></div>
+                </div>
+                <div class="bottomCTA"><button class="primary">Get started</button><button class="ghost">I already have an account</button></div>
+              </section>
+
+              <section class="screen" id="s-auth">
+  <div class="authHead">
+    <div class="kicker">Vigilix account</div>
+    <h2 id="authTitle">Sign in</h2>
+    <p id="authSubtitle">Secure access to your devices and streams.</p>
+  </div>
+
+  <div class="segment" id="authSegment">
+    <button class="sel" data-auth="login">Sign In</button>
+    <button data-auth="register">Create account</button>
+  </div>
+
+  <div class="card pad">
+    <div class="field" id="nameField" style="display:none">
+      <label>Full name</label>
+      <input class="input" placeholder="Your name"/>
+    </div>
+
+    <div class="field">
+      <label>Email address</label>
+      <input class="input" placeholder="you@example.com" inputmode="email"/>
+    </div>
+
+    <div class="field">
+      <label>Password</label>
+      <input class="input" type="password" placeholder="Enter your password"/>
+    </div>
+
+    <div class="field" id="confirmField" style="display:none">
+      <label>Confirm password</label>
+      <input class="input" type="password" placeholder="Confirm your password"/>
+    </div>
+
+    <div class="row" style="margin:12px 0 15px" id="loginMeta">
+      <span class="tiny muted">Secure session</span>
+      <button class="link">Forgot password?</button>
+    </div>
+
+    <button class="primary" id="authSubmit" style="width:100%">Sign in</button>
+    <div class="formNote" id="authNote">Your session stays available after refresh on this device.</div>
+  </div>
+
+  <div class="authToggleNote">You can switch between sign in and account creation without leaving this screen.</div>
+</section>
+
+              <section class="screen" id="s-setup">
+                <div class="top"><div><div class="kicker">First-time setup</div><div class="title">Configure device</div><div class="sub">Choose its role in your security network.</div></div></div>
+                <div class="roleGrid">
+                  <div class="role sel"><div class="roleI">◉</div><h3>Camera device</h3><p>Keep this phone in a room and use it as a dedicated live camera.</p><div class="badge" style="margin-top:10px">Stationary</div></div>
+                  <div class="role"><div class="roleI">⌁</div><h3>Viewer device</h3><p>Carry this phone to monitor cameras, talk back and receive alerts.</p><div class="badge" style="margin-top:10px">Handheld</div></div>
+                </div>
+                <div class="card pad" style="margin-top:10px"><div class="row"><div><div class="kicker">Detected device</div><div class="small" style="font-weight:600;margin-top:4px">Pixel 7 Pro</div></div><button class="primary" style="padding:9px 10px">Use camera</button></div></div>
+              </section>
+
+              <section class="screen" id="s-home">
+                <div class="top"><div><div class="kicker">Wednesday · Home</div><div class="title">Good morning</div><div class="sub">Your security system is ready.</div></div><button class="iconButton"><span>⋯</span></button></div>
+                <div class="card heroStat"><div class="row"><div><div class="kicker">System status</div><div class="big" style="margin-top:4px">All clear.</div></div><span class="badge"><span class="dot pulse"></span> 2 online</span></div><div class="metrics"><span class="badge">2 cameras</span><span class="badge">P2P connected</span><span class="badge">84% avg battery</span></div></div>
+                <div class="quick">
+                  <div class="card quickCard"><div class="qicon">◉</div><h3>Start camera</h3><p>Broadcast this phone with your saved profile.</p><button class="smallbtn">Start</button></div>
+                  <div class="card quickCard"><div class="qicon">⌁</div><h3>Join stream</h3><p>Enter a room code to watch another camera.</p><button class="smallbtn">Enter code</button></div>
+                </div>
+                <div class="sectionHead"><div class="sectionTitle">My cameras</div><button class="link">View all</button></div>
+                <div class="cameraList">
+                  <div class="card cam"><div class="thumb"><span class="badge" style="position:absolute;left:7px;top:7px"><span class="dot pulse"></span> Streaming</span></div><div class="camInfo"><div class="row"><div><div class="camName">Living Room</div><div class="camSub">ROOM / XK92 · 84% · Charging</div></div><span class="badge">720p</span></div><div class="camActions"><button class="primaryMini">Watch live</button><button>Details</button></div></div></div>
+                  <div class="card cam"><div class="thumb"><span class="badge" style="position:absolute;left:7px;top:7px">Idle</span></div><div class="camInfo"><div class="row"><div><div class="camName">Front Porch</div><div class="camSub">ROOM / FQ18 · 64%</div></div><span class="badge">Battery</span></div><div class="camActions"><button>Wake camera</button><button>Details</button></div></div></div>
+                </div>
+              </section>
+
+              <section class="screen" id="s-camera">
+                <div class="liveScreen">
+                  <div class="liveTop"><div style="display:flex;gap:6px"><div class="hud" style="color:var(--danger)">● REC 00:14:22</div><div class="hud">1 viewer</div></div><div class="hud">84% · 720p</div></div>
+                  <div style="position:absolute;left:50%;top:16px;transform:translateX(-50%);padding:8px 11px;border-radius:12px;border:1px solid rgba(255,255,255,.1);background:rgba(4,8,13,.54);font-size:9px;backdrop-filter:blur(18px)">ROOM / XK92</div>
+                  <div class="liveCenter"><div class="reticle"></div><div class="wait">Waiting for viewer connection</div></div>
+                  <div class="controls"><button class="ctl">⌁</button><button class="ctl">↻</button><button class="ctl active">◌</button><button class="ctl">●</button><button class="ctl stop">×</button></div>
+                </div>
+              </section>
+
+              <section class="screen" id="s-viewer">
+                <div class="liveScreen">
+                  <div class="liveTop"><div style="display:flex;gap:6px"><div class="hud">Living Room</div><div class="hud">XK92</div></div><div class="hud" style="color:var(--success)">● Excellent</div></div>
+                  <div class="reconnect"><div class="spinner"></div><b>Reconnecting to camera</b><span>Grace period active</span></div>
+                  <div class="controls"><button class="ctl active">◉</button><button class="ctl active" style="box-shadow:0 0 0 8px color-mix(in srgb,var(--accent) 7%,transparent)">◌</button><button class="ctl">⌁</button><button class="ctl">●</button><button class="ctl">⛶</button></div>
+                </div>
+              </section>
+
+              <section class="screen" id="s-recordings">
+                <div class="top"><div><div class="kicker">Archive</div><div class="title">Recordings</div><div class="sub">2.4 GB of 10 GB used</div></div><button class="iconButton">⌕</button></div>
+                <div class="chips" style="margin-top:2px"><span class="chip" style="color:var(--text);background:var(--surface2)">All</span><span class="chip">Today</span><span class="chip">Living Room</span><span class="chip">Motion</span></div>
+                <div class="recordGrid" style="margin-top:10px">
+                  <div class="card rec"><div class="recThumb"><span class="tc">09:42</span></div><h4>Living Room</h4><p>Today · Motion · 00:18</p></div>
+                  <div class="card rec"><div class="recThumb"><span class="tc">08:17</span></div><h4>Front Porch</h4><p>Today · Manual · 01:12</p></div>
+                  <div class="card rec"><div class="recThumb"><span class="tc">22:11</span></div><h4>Front Porch</h4><p>Yesterday · Manual · 02:45</p></div>
+                  <div class="card rec"><div class="recThumb"><span class="tc">18:05</span></div><h4>Living Room</h4><p>Yesterday · Motion · 00:41</p></div>
+                </div>
+              </section>
+
+              <section class="screen" id="s-settings">
+  <div class="top">
+    <div>
+      <div class="kicker">Preferences</div>
+      <div class="title">Settings</div>
+      <div class="sub">Vigilix · v1.1.0</div>
+    </div>
+    <button class="iconButton">⋯</button>
+  </div>
+
+  <div class="card pad settingBlock">
+    <div class="kicker">Appearance</div>
+
+    <div class="settingRow">
+      <div>
+        <div class="small">Theme</div>
+        <div class="tiny muted" style="margin-top:3px">Light is the default. Dark follows your preference.</div>
+      </div>
+      <div class="appearanceSwitch">
+        <button id="themeLightBtn" class="sel">Light</button>
+        <button id="themeDarkBtn">Dark</button>
+      </div>
+    </div>
+
+    <div class="settingRow">
+      <div>
+        <div class="small">System appearance</div>
+        <div class="tiny muted" style="margin-top:3px">Use Vigilix's selected theme</div>
+      </div>
+      <button class="toggle on"></button>
+    </div>
+  </div>
+
+  <div class="card pad settingBlock">
+    <div class="kicker">Experience</div>
+    <div class="settingRow"><div><div class="small">Resolution</div><div class="tiny muted" style="margin-top:3px">Video stream quality</div></div><div class="select">720p HD</div></div>
+    <div class="settingRow"><div><div class="small">Bitrate</div><div class="tiny muted" style="margin-top:3px">Adaptive</div></div><div class="select">Auto</div></div>
+    <div class="settingRow"><div><div class="small">Frame rate</div><div class="tiny muted" style="margin-top:3px">Target frame rate</div></div><div class="select">30 fps</div></div>
+    <div class="settingRow"><div><div class="small">Auto reconnect</div><div class="tiny muted" style="margin-top:3px">Recover from short network drops</div></div><button class="toggle on"></button></div>
+  </div>
+
+  <div class="card pad settingBlock">
+    <div class="kicker">System</div>
+    <div class="settingRow"><span class="small">Server connection</span><span class="badge"><span class="dot pulse"></span> Connected</span></div>
+    <div class="settingRow"><span class="small">Background streaming</span><span class="badge">Enabled</span></div>
+    <div class="settingRow"><span class="small">Push-to-wake</span><span class="badge">Enabled</span></div>
+  </div>
+
+  <button class="danger" style="width:100%;margin-top:11px">Sign out</button>
+</section>
+
+            </div>
+
+            <div class="phoneBar">
+              <button class="tab active" data-screen="home"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M4 10.5 12 4l8 6.5v8a1.5 1.5 0 0 1-1.5 1.5H5.5A1.5 1.5 0 0 1 4 18.5z"/><path d="M9.5 20v-5h5v5"/></svg>Home</button>
+              <button class="tab" data-screen="camera"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><rect x="3" y="6" width="14" height="12" rx="2"/><path d="m17 10 4-2v8l-4-2z"/><circle cx="10" cy="12" r="2.5"/></svg>Camera</button>
+              <button class="tab" data-screen="viewer"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="M9 10.2a3 3 0 1 1 0 3.6"/><path d="M12.5 10.2h5M12.5 13.8h5"/></svg>Viewer</button>
+              <button class="tab" data-screen="recordings"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="m10 9 5 3-5 3z"/></svg>Records</button>
+              <button class="tab" data-screen="settings"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.9l.1.1-1.8 1.8-.1-.1a1.7 1.7 0 0 0-1.9-.3 1.7 1.7 0 0 0-1 1.5V20H10v-.1a1.7 1.7 0 0 0-1-1.5 1.7 1.7 0 0 0-1.9.3l-.1.1-1.8-1.8.1-.1A1.7 1.7 0 0 0 5.6 15a1.7 1.7 0 0 0-1.5-1H4v-4h.1a1.7 1.7 0 0 0 1.5-1 1.7 1.7 0 0 0-.3-1.9l-.1-.1L7 5.2l.1.1a1.7 1.7 0 0 0 1.9.3 1.7 1.7 0 0 0 1-1.5V4h4v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.9-.3l.1-.1 1.8 1.8-.1.1a1.7 1.7 0 0 0-.3 1.9 1.7 1.7 0 0 0 1.5 1h.1v4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg>Settings</button>
+            </div>
+
+          </div>
+        </div>
+      </div>
+    </div>
+  </main>
+</div>
+
+<script>
+const titles = {
+  design:"Design direction", splash:"Splash", welcome:"Welcome", auth:"Authentication",
+  setup:"Device setup", home:"Home", camera:"Camera", viewer:"Viewer",
+  recordings:"Recordings", settings:"Settings"
+};
+
+let splashTimer = null;
+let currentAuthMode = "login";
+
+function show(name){
+  document.querySelectorAll('.screen').forEach(x=>x.classList.remove('active'));
+  const s = document.getElementById('s-'+name);
+  if(s) s.classList.add('active');
+
+  document.querySelectorAll('[data-screen]').forEach(b=>{
+    b.classList.toggle('active', b.dataset.screen === name);
+  });
+
+  document.getElementById('pageTitle').textContent = titles[name] || name;
+
+  if(name === "splash") startSplash();
+  else clearTimeout(splashTimer);
+}
+
+function startSplash(){
+  clearTimeout(splashTimer);
+  splashTimer = setTimeout(()=>show("welcome"), 2800);
+
+  // Reset animation so every replay visibly animates.
+  const splash = document.getElementById("s-splash");
+  const logo = splash?.querySelector(".splashLogo");
+  const load = splash?.querySelector(".load span");
+
+  [logo, load].forEach(el=>{
+    if(!el) return;
+    el.style.animation = "none";
+    void el.offsetWidth;
+    el.style.animation = "";
+  });
+}
+
+document.querySelectorAll('[data-screen]').forEach(b=>{
+  b.addEventListener('click',()=>show(b.dataset.screen));
+});
+
+function setTheme(t){
+  document.body.dataset.theme = t;
+  localStorage.setItem('vigilix-theme', t);
+
+  document.getElementById("themeLightBtn")?.classList.toggle("sel", t === "light");
+  document.getElementById("themeDarkBtn")?.classList.toggle("sel", t === "dark");
+}
+
+document.querySelectorAll('[data-theme]').forEach(b=>{
+  b.addEventListener('click',()=>setTheme(b.dataset.theme));
+});
+
+document.getElementById("themeLightBtn")?.addEventListener("click",()=>setTheme("light"));
+document.getElementById("themeDarkBtn")?.addEventListener("click",()=>setTheme("dark"));
+
+document.getElementById("splashSkip")?.addEventListener("click",()=>show("welcome"));
+
+function setAuthMode(mode){
+  currentAuthMode = mode;
+
+  document.querySelectorAll("#authSegment button").forEach(btn=>{
+    btn.classList.toggle("sel", btn.dataset.auth === mode);
+  });
+
+  const register = mode === "register";
+  document.getElementById("nameField").style.display = register ? "block" : "none";
+  document.getElementById("confirmField").style.display = register ? "block" : "none";
+  document.getElementById("loginMeta").style.display = register ? "none" : "flex";
+
+  document.getElementById("authTitle").textContent = register ? "Create account" : "Sign in";
+  document.getElementById("authSubtitle").textContent =
+    register ? "Set up your private Vigilix account." : "Secure access to your devices and streams.";
+  document.getElementById("authSubmit").textContent = register ? "Create account" : "Sign in";
+  document.getElementById("authNote").textContent =
+    register ? "Your account can manage multiple camera and viewer devices." :
+               "Your session stays available after refresh on this device.";
+}
+
+document.querySelectorAll("[data-auth]").forEach(btn=>{
+  btn.addEventListener("click",()=>setAuthMode(btn.dataset.auth));
+});
+
+const savedTheme = localStorage.getItem("vigilix-theme") || "light";
+setTheme(savedTheme);
+
+// Launch the prototype like the real mobile app: Splash -> Welcome.
+startSplash();
+</script>
+</body>
+</html>

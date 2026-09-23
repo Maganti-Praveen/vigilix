@@ -56,8 +56,8 @@ export function VCard({ children, style, variant = 'default', animated }: VCardP
 
 const styles = StyleSheet.create({
   base: {
-    borderRadius: radii['2xl'],
-    padding: spacing['5'],
+    borderRadius: radii.card,
+    padding: spacing['4'],
     overflow: 'hidden',
   },
 });

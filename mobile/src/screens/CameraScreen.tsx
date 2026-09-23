@@ -7,17 +7,23 @@
 import React, { useEffect, useCallback, useState, useRef } from 'react';
 import {
   View, Text, StyleSheet, StatusBar, Alert, TouchableOpacity,
-  Animated, Dimensions, ActivityIndicator, AppState,
+  Animated, Dimensions, ActivityIndicator, AppState, BackHandler,
 } from 'react-native';
 import { RTCView } from 'react-native-webrtc';
 import * as Battery from 'expo-battery';
 import { activateKeepAwakeAsync, deactivateKeepAwake } from 'expo-keep-awake';
 import { LinearGradient } from 'expo-linear-gradient';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTheme } from '../design/ThemeContext';
 import { spacing, radii, typography } from '../design/tokens';
 import { useAppStore } from '../store/appStore';
 import { useSocket } from '../hooks/useSocket';
 import { useWebRTC } from '../hooks/useWebRTC';
+import {
+  Camera, Radio, Eye, ChevronLeft, Zap, Flashlight,
+  Mic, MicOff, CircleDot, Circle, SwitchCamera, Square,
+  Battery as BatteryIcon,
+} from 'lucide-react-native';
 import { VIconButton } from '../components/ui/VIconButton';
 import { VBadge } from '../components/ui/VBadge';
 import { VGlass } from '../components/ui/VGlass';
@@ -34,11 +40,13 @@ interface CameraScreenProps {
 
 export function CameraScreen({ onBack }: CameraScreenProps) {
   const { theme } = useTheme();
+  const insets = useSafeAreaInsets();
+  const [batteryLevel, setBatteryLevel] = useState<number>(84);
 
   const {
     roomCode, isStreaming, isFrontCamera, isFlashOn,
     isMicEnabled, isRecording, viewerCount, connectionStatus,
-    streamQuality, setFlashOn, setMicEnabled, setIsRecording,
+    streamQuality, videoQuality, setFlashOn, setMicEnabled, setIsRecording,
     toggleCamera, setMode, setStreamQuality, setError, error,
   } = useAppStore();
 
@@ -82,6 +90,7 @@ export function CameraScreen({ onBack }: CameraScreenProps) {
       try {
         const send = async () => {
           const level = await Battery.getBatteryLevelAsync();
+          if (level >= 0) setBatteryLevel(Math.round(level * 100));
           const state = await Battery.getBatteryStateAsync();
           const isCharging = state === Battery.BatteryState.CHARGING;
           const { roomCode: code } = useAppStore.getState();
@@ -144,7 +153,8 @@ export function CameraScreen({ onBack }: CameraScreenProps) {
     setError(null);
     try {
       const stream = await initLocalStream(
-        isFrontCamera ? 'user' : 'environment', 'medium'
+        isFrontCamera ? 'user' : 'environment',
+        videoQuality
       );
       setStreamURL(stream.toURL());
       setTimeout(() => setTorchAvailable(isTorchSupported()), 500);
@@ -167,7 +177,7 @@ export function CameraScreen({ onBack }: CameraScreenProps) {
     } finally {
       setIsInitializing(false);
     }
-  }, [isFrontCamera, initLocalStream, createRoom, startStream, isTorchSupported, setError]);
+  }, [isFrontCamera, videoQuality, initLocalStream, createRoom, startStream, isTorchSupported, setError]);
 
   // ─── Stop stream ───────────────────────────────────────────────
   const handleStopStream = useCallback(() => {
@@ -181,6 +191,35 @@ export function CameraScreen({ onBack }: CameraScreenProps) {
     stopStream(); leaveRoom(); cleanupWebRTC();
     setStreamURL(null); setTorchAvailable(false); setError(null);
   }, [stopStream, leaveRoom, cleanupWebRTC, isRecording, isFlashOn]);
+
+  // ─── Hardware back button handling ────────────────────────────
+  useEffect(() => {
+    const onBackPress = () => {
+      if (isStreaming) {
+        Alert.alert(
+          'Stop Streaming',
+          'Are you sure you want to stop streaming and exit?',
+          [
+            { text: 'Cancel', style: 'cancel', onPress: () => {} },
+            {
+              text: 'Exit',
+              style: 'destructive',
+              onPress: () => {
+                handleStopStream();
+                onBack();
+              },
+            },
+          ]
+        );
+        return true;
+      }
+      onBack();
+      return true;
+    };
+
+    const subscription = BackHandler.addEventListener('hardwareBackPress', onBackPress);
+    return () => subscription.remove();
+  }, [isStreaming, handleStopStream, onBack]);
 
   // ─── Control handlers ─────────────────────────────────────────
   const handleToggleFlash = useCallback(() => {
@@ -261,7 +300,7 @@ export function CameraScreen({ onBack }: CameraScreenProps) {
             </>
           ) : (
             <>
-              <Text style={{ fontSize: 48, marginBottom: spacing['4'] }}>📷</Text>
+              <Camera size={44} color="#4F8EF7" style={{ marginBottom: spacing['4'] }} />
               <Text style={styles.placeholderTitle}>Camera Ready</Text>
               <Text style={styles.placeholderText}>
                 {connectionStatus === 'connected'
@@ -271,7 +310,7 @@ export function CameraScreen({ onBack }: CameraScreenProps) {
               <View style={{ marginTop: spacing['8'], width: '70%' }}>
                 <VButton
                   title="Start Streaming"
-                  icon="📡"
+                  icon={<Radio size={20} color="#FFF" />}
                   onPress={handleStartStream}
                   variant="primary"
                   size="lg"
@@ -285,213 +324,375 @@ export function CameraScreen({ onBack }: CameraScreenProps) {
         </LinearGradient>
       )}
 
-      {/* ─── Top Overlay: Status Badges ─── */}
-      <Animated.View style={[styles.topOverlay, { opacity: overlayOpacity }]}>
-        <View style={styles.topLeft}>
-          {isStreaming && <VBadge label="LIVE" variant="live" pulse />}
-          {isRecording && <VBadge label={`REC ${fmt(recordingDuration)}`} variant="recording" pulse />}
-        </View>
-        <View style={styles.topRight}>
-          {viewerCount > 0 && (
-            <VBadge label={`${viewerCount} viewer${viewerCount !== 1 ? 's' : ''}`} variant="info" icon="👁️" />
-          )}
-          <VBadge label={streamQuality} variant="default" />
-        </View>
-      </Animated.View>
+      {/* ─── Top HUD Overlay matching reference ─── */}
+      <View style={[styles.liveTop, { top: Math.max(insets.top + 8, 20) }]}>
+        <View style={styles.hudLeftGroup}>
+          <TouchableOpacity
+            activeOpacity={0.7}
+            onPress={handleBack}
+            style={styles.hudBackButton}
+          >
+            <ChevronLeft size={16} color="#FFF" />
+          </TouchableOpacity>
 
-      {/* ─── Back Button ─── */}
-      <View style={styles.backButton}>
-        <VIconButton icon="←" onPress={handleBack} glass size="sm" />
+          {isRecording ? (
+            <View style={[styles.hudPill, styles.hudRecPill]}>
+              <View style={styles.redDot} />
+              <Text style={styles.hudRecText}>REC {fmt(recordingDuration)}</Text>
+            </View>
+          ) : isStreaming ? (
+            <View style={[styles.hudPill, styles.hudLivePill]}>
+              <View style={styles.greenDot} />
+              <Text style={styles.hudLiveText}>LIVE</Text>
+            </View>
+          ) : null}
+
+          {isStreaming && (
+            <View style={styles.hudPill}>
+              <Eye size={11} color="rgba(255,255,255,0.7)" style={{ marginRight: 4 }} />
+              <Text style={styles.hudText}>
+                {viewerCount} {viewerCount === 1 ? 'viewer' : 'viewers'}
+              </Text>
+            </View>
+          )}
+        </View>
+
+        {/* Right HUD: Battery & Resolution */}
+        <View style={styles.hudPill}>
+          <BatteryIcon size={11} color="rgba(255,255,255,0.7)" style={{ marginRight: 4 }} />
+          <Text style={styles.hudText}>
+            {batteryLevel}% · {streamQuality || '720p'}
+          </Text>
+        </View>
       </View>
 
-      {/* ─── Center: Room Code ─── */}
+      {/* ─── Center Room Code Floating Pill ─── */}
       {roomCode && isStreaming && (
-        <Animated.View style={[styles.centerOverlay, { opacity: overlayOpacity }]}>
-          <VGlass intensity={20} radius={radii.xl}>
-            <TouchableOpacity onPress={handleCopyCode} activeOpacity={0.7}>
-              <View style={styles.roomCodeInner}>
-                <Text style={styles.roomLabel}>Room Code</Text>
-                <Text style={styles.roomCode}>{roomCode}</Text>
-                <Text style={styles.roomHint}>Tap to copy</Text>
-              </View>
-            </TouchableOpacity>
-          </VGlass>
-        </Animated.View>
+        <TouchableOpacity
+          activeOpacity={0.8}
+          onPress={handleCopyCode}
+          style={[styles.centerRoomPill, { top: Math.max(insets.top + 14, 26) }]}
+        >
+          <Text style={styles.centerRoomText}>ROOM / {roomCode}</Text>
+        </TouchableOpacity>
       )}
 
-      {/* ─── Bottom: Floating Control Dock ─── */}
-      {displayURL && (
-        <Animated.View style={[styles.bottomDock, { opacity: controlsOpacity }]}>
-          <VGlass intensity={28} radius={radii['3xl']}>
-            <View style={styles.controlsRow}>
-              <VIconButton
-                icon={isFlashOn ? '🔦' : '💡'}
-                label={!torchAvailable ? 'N/A' : isFlashOn ? 'On' : 'Flash'}
-                onPress={handleToggleFlash}
-                active={isFlashOn}
-                disabled={isFrontCamera || !torchAvailable}
-                glass
-              />
-              <VIconButton
-                icon={isMicEnabled ? '🎙️' : '🔇'}
-                label={isMicEnabled ? 'Mic' : 'Muted'}
-                onPress={handleToggleMic}
-                active={isMicEnabled}
-                glass
-              />
-              <VIconButton
-                icon="⏺️"
-                label={isRecording ? fmt(recordingDuration) : 'Record'}
-                onPress={handleToggleRecording}
-                active={isRecording}
-                danger={isRecording}
-                glass
-                size="lg"
-              />
-              <VIconButton
-                icon="🔄"
-                label="Flip"
-                onPress={handleSwitchCamera}
-                glass
-              />
-              {isStreaming ? (
-                <VIconButton
-                  icon="⏹️"
-                  label="Stop"
-                  onPress={handleStopStream}
-                  danger
-                  glass
-                />
-              ) : (
-                <VIconButton
-                  icon="📡"
-                  label="Start"
-                  onPress={handleStartStream}
-                  active
-                  glass
-                />
-              )}
-            </View>
-          </VGlass>
-        </Animated.View>
-      )}
-
-      {/* ─── Talk-back indicator ─── */}
-      {remoteStream && remoteStream.getAudioTracks().some((t: any) => t.enabled) && (
-        <View style={styles.talkbackBadge}>
-          <VBadge label="TALK-BACK" variant="info" icon="🎙️" />
+      {/* ─── Center Reticle & Waiting Pill (when peer not connected) ─── */}
+      {isStreaming && !peerConnected && (
+        <View style={styles.liveCenter} pointerEvents="none">
+          <View style={styles.reticle}>
+            <View style={styles.reticleH} />
+            <View style={styles.reticleV} />
+          </View>
+          <View style={styles.waitPill}>
+            <Text style={styles.waitText}>Waiting for viewer connection</Text>
+          </View>
         </View>
+      )}
+
+      {/* ─── Talk-Back Active Indicator ─── */}
+      {remoteStream && remoteStream.getAudioTracks().some((t: any) => t.enabled) && (
+        <View style={styles.talkbackBanner}>
+          <View style={styles.greenDot} />
+          <Text style={styles.talkbackText}>Two-way audio receiving</Text>
+        </View>
+      )}
+
+      {/* ─── Bottom Floating 5-Button Dock matching reference ─── */}
+      {displayURL && (
+        <Animated.View
+          style={[
+            styles.controlsDock,
+            {
+              bottom: Math.max(insets.bottom + 16, 24),
+              opacity: controlsOpacity,
+            },
+          ]}
+        >
+          {/* 1. Flashlight */}
+          <TouchableOpacity
+            activeOpacity={0.7}
+            onPress={handleToggleFlash}
+            disabled={isFrontCamera || !torchAvailable}
+            style={[
+              styles.ctl,
+              isFlashOn && styles.ctlActive,
+              (!torchAvailable || isFrontCamera) && styles.ctlDisabled,
+            ]}
+          >
+            {isFlashOn ? (
+              <Zap size={20} color="#FBBF24" />
+            ) : (
+              <Flashlight size={20} color="#FFF" />
+            )}
+          </TouchableOpacity>
+
+          {/* 2. Switch Camera */}
+          <TouchableOpacity
+            activeOpacity={0.7}
+            onPress={handleSwitchCamera}
+            style={styles.ctl}
+          >
+            <SwitchCamera size={20} color="#FFF" />
+          </TouchableOpacity>
+
+          {/* 3. Mic Toggle */}
+          <TouchableOpacity
+            activeOpacity={0.7}
+            onPress={handleToggleMic}
+            style={[styles.ctl, !isMicEnabled && styles.ctlMuted]}
+          >
+            {isMicEnabled ? (
+              <Mic size={20} color="#6F9CFF" />
+            ) : (
+              <MicOff size={20} color="#FF6F74" />
+            )}
+          </TouchableOpacity>
+
+          {/* 4. Record Button */}
+          <TouchableOpacity
+            activeOpacity={0.7}
+            onPress={handleToggleRecording}
+            style={[styles.ctl, isRecording && styles.ctlRecording]}
+          >
+            {isRecording ? (
+              <CircleDot size={20} color="#FF6F74" />
+            ) : (
+              <Circle size={20} color="#FFF" />
+            )}
+          </TouchableOpacity>
+
+          {/* 5. Stop Button */}
+          <TouchableOpacity
+            activeOpacity={0.7}
+            onPress={handleStopStream}
+            style={[styles.ctl, styles.ctlStop]}
+          >
+            <Square size={16} color="#FF6F74" />
+          </TouchableOpacity>
+        </Animated.View>
       )}
     </View>
   );
 }
 
-
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#000',
+    backgroundColor: '#05080D',
   },
-
-  // Placeholder (no stream)
   placeholder: {
     justifyContent: 'center',
     alignItems: 'center',
-    padding: spacing['8'],
+    padding: spacing['6'],
   },
   placeholderTitle: {
-    color: '#F1F5F9',
-    fontSize: typography.size['2xl'],
-    fontFamily: typography.fontFamily.bold,
-    marginBottom: spacing['2'],
+    color: '#F4F5F7',
+    fontSize: 22,
+    fontWeight: '700',
+    marginBottom: 4,
   },
   placeholderText: {
-    color: '#64748B',
-    fontSize: typography.size.md,
-    fontFamily: typography.fontFamily.regular,
+    color: '#9299A3',
+    fontSize: 13,
     textAlign: 'center',
   },
-
-  // Top overlay
-  topOverlay: {
+  liveTop: {
     position: 'absolute',
-    top: 50,
-    left: spacing['4'],
-    right: spacing['4'],
+    left: 14,
+    right: 14,
     flexDirection: 'row',
     justifyContent: 'space-between',
-    alignItems: 'flex-start',
+    alignItems: 'center',
     zIndex: 10,
   },
-  topLeft: {
+  hudLeftGroup: {
     flexDirection: 'row',
-    gap: spacing['2'],
-  },
-  topRight: {
-    flexDirection: 'row',
-    gap: spacing['2'],
     alignItems: 'center',
+    gap: 6,
   },
-
-  // Back button
-  backButton: {
+  hudBackButton: {
+    width: 32,
+    height: 32,
+    borderRadius: 11,
+    backgroundColor: 'rgba(4, 8, 13, 0.65)',
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.12)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  hudPill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 6,
+    paddingHorizontal: 10,
+    borderRadius: radii.pill,
+    backgroundColor: 'rgba(4, 8, 13, 0.65)',
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.12)',
+  },
+  hudRecPill: {
+    borderColor: 'rgba(217, 85, 94, 0.4)',
+    backgroundColor: 'rgba(217, 85, 94, 0.18)',
+  },
+  hudLivePill: {
+    borderColor: 'rgba(34, 164, 106, 0.4)',
+    backgroundColor: 'rgba(34, 164, 106, 0.18)',
+  },
+  hudText: {
+    fontSize: 10,
+    color: '#E7EBF2',
+    fontWeight: '600',
+  },
+  hudRecText: {
+    fontSize: 10,
+    color: '#FF6F74',
+    fontWeight: '700',
+  },
+  hudLiveText: {
+    fontSize: 10,
+    color: '#56D493',
+    fontWeight: '700',
+  },
+  redDot: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+    backgroundColor: '#FF6F74',
+    marginRight: 5,
+  },
+  greenDot: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+    backgroundColor: '#56D493',
+    marginRight: 5,
+  },
+  centerRoomPill: {
     position: 'absolute',
-    top: 50,
-    left: spacing['4'],
+    alignSelf: 'center',
+    paddingVertical: 7,
+    paddingHorizontal: 13,
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.14)',
+    backgroundColor: 'rgba(4, 8, 13, 0.70)',
+    zIndex: 10,
+  },
+  centerRoomText: {
+    fontSize: 10,
+    fontWeight: '700',
+    letterSpacing: 1.2,
+    color: '#FFFFFF',
+  },
+  liveCenter: {
+    position: 'absolute',
+    top: '45%',
+    left: 0,
+    right: 0,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  reticle: {
+    width: 70,
+    height: 70,
+    borderRadius: 35,
+    borderWidth: 1.5,
+    borderColor: 'rgba(255, 255, 255, 0.22)',
+    borderStyle: 'dashed',
+    alignItems: 'center',
+    justifyContent: 'center',
+    position: 'relative',
+  },
+  reticleH: {
+    position: 'absolute',
+    width: 26,
+    height: 1,
+    backgroundColor: 'rgba(255, 255, 255, 0.25)',
+  },
+  reticleV: {
+    position: 'absolute',
+    width: 1,
+    height: 26,
+    backgroundColor: 'rgba(255, 255, 255, 0.25)',
+  },
+  waitPill: {
+    marginTop: 14,
+    paddingVertical: 7,
+    paddingHorizontal: 13,
+    borderRadius: radii.pill,
+    backgroundColor: 'rgba(5, 9, 14, 0.65)',
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.12)',
+  },
+  waitText: {
+    fontSize: 10,
+    color: '#DFE4EB',
+    fontWeight: '500',
+  },
+  talkbackBanner: {
+    position: 'absolute',
+    bottom: 95,
+    alignSelf: 'center',
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 6,
+    paddingHorizontal: 12,
+    borderRadius: radii.pill,
+    backgroundColor: 'rgba(6, 14, 25, 0.85)',
+    borderWidth: 1,
+    borderColor: 'rgba(57, 118, 255, 0.4)',
+    zIndex: 10,
+  },
+  talkbackText: {
+    fontSize: 10,
+    color: '#6F9CFF',
+    fontWeight: '600',
+  },
+  controlsDock: {
+    position: 'absolute',
+    alignSelf: 'center',
+    flexDirection: 'row',
+    gap: 8,
+    padding: 7,
+    borderRadius: 20,
+    backgroundColor: 'rgba(5, 9, 14, 0.75)',
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.12)',
     zIndex: 20,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 10 },
+    shadowOpacity: 0.35,
+    shadowRadius: 20,
+    elevation: 8,
   },
-
-  // Center overlay (room code)
-  centerOverlay: {
-    position: 'absolute',
-    top: SCREEN_H * 0.35,
-    alignSelf: 'center',
-    zIndex: 10,
-  },
-  roomCodeInner: {
+  ctl: {
+    width: 44,
+    height: 44,
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.10)',
+    backgroundColor: 'rgba(255, 255, 255, 0.06)',
     alignItems: 'center',
-    paddingHorizontal: spacing['4'],
-    paddingVertical: spacing['2'],
+    justifyContent: 'center',
   },
-  roomLabel: {
-    color: 'rgba(255,255,255,0.6)',
-    fontSize: typography.size.xs,
-    fontFamily: typography.fontFamily.medium,
-    textTransform: 'uppercase',
-    letterSpacing: 2,
-    marginBottom: spacing['1'],
+  ctlActive: {
+    backgroundColor: 'rgba(111, 156, 255, 0.22)',
+    borderColor: 'rgba(111, 156, 255, 0.55)',
   },
-  roomCode: {
-    color: '#FFF',
-    fontSize: typography.size['3xl'],
-    fontFamily: typography.fontFamily.bold,
-    letterSpacing: 6,
+  ctlMuted: {
+    backgroundColor: 'rgba(255, 111, 116, 0.15)',
+    borderColor: 'rgba(255, 111, 116, 0.35)',
   },
-  roomHint: {
-    color: 'rgba(255,255,255,0.4)',
-    fontSize: typography.size.xs,
-    marginTop: spacing['1'],
+  ctlRecording: {
+    backgroundColor: 'rgba(255, 111, 116, 0.22)',
+    borderColor: 'rgba(255, 111, 116, 0.55)',
   },
-
-  // Bottom dock
-  bottomDock: {
-    position: 'absolute',
-    bottom: spacing['10'],
-    left: spacing['4'],
-    right: spacing['4'],
-    zIndex: 10,
+  ctlStop: {
+    backgroundColor: 'rgba(255, 111, 116, 0.18)',
+    borderColor: 'rgba(255, 111, 116, 0.40)',
   },
-  controlsRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-around',
-    alignItems: 'center',
-  },
-
-  // Talk-back
-  talkbackBadge: {
-    position: 'absolute',
-    bottom: spacing['20'] + spacing['10'],
-    alignSelf: 'center',
-    zIndex: 10,
+  ctlDisabled: {
+    opacity: 0.35,
   },
 });

@@ -11,19 +11,20 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTheme } from '../../design/ThemeContext';
 import { spacing, radii, typography } from '../../design/tokens';
 
+import { Home, Camera, Eye, Film, Settings } from 'lucide-react-native';
+
 interface Tab {
   key: string;
   label: string;
-  icon: string;
-  activeIcon: string;
+  IconComponent: React.ComponentType<{ size?: number; color?: string; strokeWidth?: number }>;
 }
 
 const TABS: Tab[] = [
-  { key: 'home', label: 'Home', icon: '🏠', activeIcon: '🏠' },
-  { key: 'camera', label: 'Camera', icon: '📷', activeIcon: '📷' },
-  { key: 'viewer', label: 'Viewer', icon: '👁️', activeIcon: '👁️' },
-  { key: 'recordings', label: 'Clips', icon: '🎬', activeIcon: '🎬' },
-  { key: 'settings', label: 'Settings', icon: '⚙️', activeIcon: '⚙️' },
+  { key: 'home', label: 'Home', IconComponent: Home },
+  { key: 'camera', label: 'Camera', IconComponent: Camera },
+  { key: 'viewer', label: 'Viewer', IconComponent: Eye },
+  { key: 'recordings', label: 'Clips', IconComponent: Film },
+  { key: 'settings', label: 'Settings', IconComponent: Settings },
 ];
 
 interface BottomTabBarProps {
@@ -38,75 +39,108 @@ export function BottomTabBar({ activeTab, onTabPress }: BottomTabBarProps) {
   return (
     <View
       style={[
-        styles.container,
+        styles.dockWrapper,
         {
-          backgroundColor: theme.nav.background,
-          borderTopColor: theme.nav.border,
-          paddingBottom: Math.max(insets.bottom, spacing['2']),
+          bottom: Math.max(insets.bottom + 6, 14),
         },
       ]}
+      pointerEvents="box-none"
     >
-      {TABS.map((tab) => {
-        const isActive = activeTab === tab.key;
-        return (
-          <TouchableOpacity
-            key={tab.key}
-            activeOpacity={0.7}
-            onPress={() => onTabPress(tab.key)}
-            style={styles.tab}
-          >
-            <View
-              style={[
-                styles.iconWrapper,
-                isActive && {
-                  backgroundColor: theme.accent.primaryMuted,
-                },
-              ]}
+      <View
+        style={[
+          styles.dock,
+          {
+            backgroundColor: theme.mode === 'light' ? 'rgba(255, 255, 255, 0.92)' : 'rgba(17, 19, 24, 0.90)',
+            borderColor: theme.border.primary,
+          },
+        ]}
+      >
+        {TABS.map((tab) => {
+          const isActive = activeTab === tab.key;
+          const Icon = tab.IconComponent;
+          return (
+            <TouchableOpacity
+              key={tab.key}
+              activeOpacity={0.7}
+              onPress={() => onTabPress(tab.key)}
+              style={styles.tab}
             >
-              <Text style={{ fontSize: 20 }}>
-                {isActive ? tab.activeIcon : tab.icon}
+              <View
+                style={[
+                  styles.iconWrapper,
+                  isActive && {
+                    backgroundColor: theme.accent.primaryMuted,
+                  },
+                ]}
+              >
+                <Icon
+                  size={18}
+                  color={isActive ? theme.accent.primary : theme.text.secondary}
+                  strokeWidth={isActive ? 2.3 : 1.9}
+                />
+              </View>
+              <Text
+                style={[
+                  styles.label,
+                  {
+                    color: isActive ? theme.text.primary : theme.text.secondary,
+                    fontFamily: isActive
+                      ? typography.fontFamily.semibold
+                      : typography.fontFamily.medium,
+                    fontWeight: isActive ? '600' : '500',
+                  },
+                ]}
+              >
+                {tab.label}
               </Text>
-            </View>
-            <Text
-              style={[
-                styles.label,
-                {
-                  color: isActive ? theme.nav.active : theme.nav.inactive,
-                  fontFamily: isActive
-                    ? typography.fontFamily.semibold
-                    : typography.fontFamily.regular,
-                },
-              ]}
-            >
-              {tab.label}
-            </Text>
-          </TouchableOpacity>
-        );
-      })}
+            </TouchableOpacity>
+          );
+        })}
+      </View>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
+  dockWrapper: {
+    position: 'absolute',
+    left: 14,
+    right: 14,
+    alignItems: 'center',
+    zIndex: 100,
+  },
+  dock: {
+    width: '100%',
+    maxWidth: 420,
+    height: 58,
+    borderRadius: 20,
+    borderWidth: 1,
     flexDirection: 'row',
-    borderTopWidth: 0.5,
-    paddingTop: spacing['2'],
+    alignItems: 'center',
+    justifyContent: 'space-around',
+    paddingHorizontal: 6,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 12 },
+    shadowOpacity: 0.16,
+    shadowRadius: 24,
+    elevation: 8,
   },
   tab: {
     flex: 1,
     alignItems: 'center',
-    gap: spacing['0.5'],
+    justifyContent: 'center',
+    paddingVertical: 4,
+    gap: 2,
   },
   iconWrapper: {
-    width: 42,
-    height: 28,
-    borderRadius: radii.lg,
+    width: 32,
+    height: 26,
+    borderRadius: 9,
     justifyContent: 'center',
     alignItems: 'center',
   },
   label: {
-    fontSize: 10,
-    letterSpacing: 0.2,
+    fontSize: 9.5,
+    letterSpacing: 0.1,
   },
 });

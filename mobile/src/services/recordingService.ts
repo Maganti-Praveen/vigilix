@@ -93,7 +93,7 @@ class RecordingService {
 
     const finalState = { ...this.state };
 
-    console.log(`[Recording] ⏹️ Stopped: ${finalState.filename} (${finalState.duration}s)`);
+    console.log(`[Recording] Stopped: ${finalState.filename} (${finalState.duration}s)`);
 
     // Save recording metadata to server
     if (cameraDeviceId && finalState.filename) {
@@ -105,7 +105,7 @@ class RecordingService {
           fileSize: finalState.fileSize,
           duration: finalState.duration,
         });
-        console.log('[Recording] 📤 Metadata saved to server');
+        console.log('[Recording] Metadata saved to server');
       } catch (error) {
         console.warn('[Recording] Failed to save metadata:', error);
       }

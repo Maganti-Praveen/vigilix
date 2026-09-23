@@ -1,18 +1,30 @@
 /**
  * VInput — Clean themed text input
+ * Robust text input component optimized to prevent cursor jumping,
+ * dropped keystrokes, and Android font-metric blinking.
  */
 
 import React, { useState } from 'react';
-import { TextInput, View, Text, StyleSheet, TextInputProps } from 'react-native';
+import { TextInput, View, Text, StyleSheet, TextInputProps, Platform } from 'react-native';
 import { useTheme } from '../../design/ThemeContext';
 import { spacing, radii, typography } from '../../design/tokens';
 
 interface VInputProps extends TextInputProps {
   label?: string;
   error?: string;
+  leftIcon?: React.ReactNode;
+  rightIcon?: React.ReactNode;
 }
 
-export function VInput({ label, error, style, ...props }: VInputProps) {
+export function VInput({
+  label,
+  error,
+  leftIcon,
+  rightIcon,
+  style,
+  secureTextEntry,
+  ...props
+}: VInputProps) {
   const { theme } = useTheme();
   const [focused, setFocused] = useState(false);
 
@@ -21,22 +33,45 @@ export function VInput({ label, error, style, ...props }: VInputProps) {
       {label && (
         <Text style={[styles.label, { color: theme.text.secondary }]}>{label}</Text>
       )}
-      <TextInput
-        {...props}
-        onFocus={(e) => { setFocused(true); props.onFocus?.(e); }}
-        onBlur={(e) => { setFocused(false); props.onBlur?.(e); }}
-        placeholderTextColor={theme.text.tertiary}
+      <View
         style={[
-          styles.input,
+          styles.inputContainer,
           {
             backgroundColor: theme.surface.input,
-            borderColor: focused ? theme.surface.inputFocus : theme.surface.inputBorder,
-            color: theme.text.primary,
+            borderColor: error
+              ? theme.status.danger
+              : focused
+              ? theme.accent.primary
+              : theme.border.primary,
           },
-          error && { borderColor: theme.status.danger },
-          style,
         ]}
-      />
+      >
+        {leftIcon && <View style={styles.iconLeft}>{leftIcon}</View>}
+        <TextInput
+          {...props}
+          secureTextEntry={secureTextEntry}
+          onFocus={(e) => {
+            setFocused(true);
+            props.onFocus?.(e);
+          }}
+          onBlur={(e) => {
+            setFocused(false);
+            props.onBlur?.(e);
+          }}
+          placeholderTextColor={theme.text.tertiary}
+          style={[
+            styles.input,
+            {
+              color: theme.text.primary,
+              // On Android, avoid custom fontFamily on TextInputs (especially password fields)
+              // to prevent Android ReactEditText from blinking, dropped keystrokes, and cursor jumping
+              fontFamily: Platform.OS === 'ios' && !secureTextEntry ? typography.fontFamily.medium : undefined,
+            },
+            style,
+          ]}
+        />
+        {rightIcon && <View style={styles.iconRight}>{rightIcon}</View>}
+      </View>
       {error && (
         <Text style={[styles.error, { color: theme.status.danger }]}>{error}</Text>
       )}
@@ -46,24 +81,38 @@ export function VInput({ label, error, style, ...props }: VInputProps) {
 
 const styles = StyleSheet.create({
   wrapper: {
-    gap: spacing['1.5'],
+    gap: spacing['1'],
   },
   label: {
-    fontSize: typography.size.sm,
+    fontSize: 12,
     fontFamily: typography.fontFamily.medium,
-    marginLeft: spacing['1'],
+    fontWeight: '500',
+    marginLeft: 2,
+    marginBottom: 4,
+  },
+  inputContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    borderWidth: 1,
+    borderRadius: radii.input,
+    paddingHorizontal: spacing['3'],
+    minHeight: 46,
   },
   input: {
-    borderWidth: 1.5,
-    borderRadius: radii.xl,
-    paddingVertical: spacing['3'],
-    paddingHorizontal: spacing['4'],
-    fontSize: typography.size.base,
-    fontFamily: typography.fontFamily.medium,
+    flex: 1,
+    paddingVertical: Platform.OS === 'android' ? 6 : 10,
+    fontSize: 14,
+  },
+  iconLeft: {
+    marginRight: spacing['2'],
+  },
+  iconRight: {
+    marginLeft: spacing['2'],
   },
   error: {
-    fontSize: typography.size.xs,
+    fontSize: 11,
     fontFamily: typography.fontFamily.medium,
-    marginLeft: spacing['1'],
+    marginLeft: 2,
+    marginTop: 2,
   },
 });

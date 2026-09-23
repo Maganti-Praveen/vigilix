@@ -103,7 +103,7 @@ class WebRTCService {
         track.enabled = false;
       });
 
-      console.log('[WebRTC] 🎙️ Audio-only stream obtained (muted by default)');
+      console.log('[WebRTC] Audio-only stream obtained (muted by default)');
       return this.localStream;
     } catch (error) {
       console.error('[WebRTC] Error getting audio stream:', error);
@@ -328,7 +328,7 @@ class WebRTCService {
     try {
       if (typeof (videoTrack as any)._setTorch === 'function') {
         (videoTrack as any)._setTorch(enabled);
-        console.log(`[WebRTC] 🔦 Torch ${enabled ? 'ON' : 'OFF'}`);
+        console.log(`[WebRTC] Torch ${enabled ? 'ON' : 'OFF'}`);
         return true;
       } else {
         console.warn('[WebRTC] _setTorch not available on this track');
@@ -408,7 +408,7 @@ class WebRTCService {
           }
           params.encodings[0].maxBitrate = maxBitrate;
           await sender.setParameters(params);
-          console.log(`[WebRTC] 📊 Max bitrate set to: ${Math.round(maxBitrate / 1000)}kbps`);
+          console.log(`[WebRTC] Max bitrate set to: ${Math.round(maxBitrate / 1000)}kbps`);
         }
       }
     } catch (error) {
@@ -433,7 +433,7 @@ class WebRTCService {
           }
           params.encodings[0].maxBitrate = maxBitrate;
           await sender.setParameters(params);
-          console.log(`[WebRTC] 🎙️ Audio bitrate set to: ${maxBitrate / 1000}kbps`);
+          console.log(`[WebRTC] Audio bitrate set to: ${maxBitrate / 1000}kbps`);
         }
       }
     } catch (error) {
@@ -492,7 +492,7 @@ class WebRTCService {
         );
       }
 
-      console.log(`[WebRTC] 🔊 Opus codec preferred (payload: ${opusPayload}, 64kbps)`);
+      console.log(`[WebRTC] Opus codec preferred (payload: ${opusPayload}, 64kbps)`);
       return result;
     } catch (error) {
       console.warn('[WebRTC] Error preferring Opus:', error);

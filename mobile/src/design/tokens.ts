@@ -9,16 +9,53 @@
 // ─── Color Palette ──────────────────────────────────────────────
 
 export const palette = {
+  // Reference Light Theme
+  lightBg: '#F5F6F8',
+  lightBg2: '#FFFFFF',
+  lightSurface: 'rgba(255, 255, 255, 0.78)',
+  lightSurface2: 'rgba(255, 255, 255, 0.94)',
+  lightLine: 'rgba(18, 23, 31, 0.09)',
+  lightText: '#111318',
+  lightMuted: '#707782',
+  lightAccent: '#3976FF',
+  lightAccent2: '#6A98FF',
+  lightSuccess: '#22A46A',
+  lightDanger: '#D9555E',
+  lightWarning: '#AD7A14',
+  lightIcon: '#2F3540',
+
+  // Reference Dark Theme
+  darkBg: '#0A0B0D',
+  darkBg2: '#111318',
+  darkSurface: 'rgba(255, 255, 255, 0.055)',
+  darkSurface2: 'rgba(255, 255, 255, 0.085)',
+  darkLine: 'rgba(255, 255, 255, 0.095)',
+  darkText: '#F4F5F7',
+  darkMuted: '#9299A3',
+  darkAccent: '#6F9CFF',
+  darkAccent2: '#91B4FF',
+  darkSuccess: '#56D493',
+  darkDanger: '#FF6F74',
+  darkWarning: '#EFBF62',
+  darkIcon: '#D9DEE6',
+
+  // HUD (for camera/viewer immersive view)
+  hudBg: 'rgba(4, 8, 13, 0.62)',
+  hudDock: 'rgba(6, 9, 14, 0.75)',
+  hudBorder: 'rgba(255, 255, 255, 0.12)',
+  hudText: '#F5F6F8',
+  hudMuted: '#9299A3',
+
   // Primary — soft blue
   blue50: '#EFF6FF',
   blue100: '#DBEAFE',
   blue200: '#BFDBFE',
   blue300: '#93C5FD',
   blue400: '#60A5FA',
-  blue500: '#4F8EF7',  // ← primary accent
-  blue600: '#3B82F6',
-  blue700: '#2563EB',
-  blue800: '#1D4ED8',
+  blue500: '#3976FF',  // ← primary accent
+  blue600: '#2563EB',
+  blue700: '#1D4ED8',
+  blue800: '#1E40AF',
   blue900: '#1E3A8A',
 
   // Secondary — subtle teal
@@ -27,21 +64,21 @@ export const palette = {
   teal200: '#99F6E4',
   teal300: '#5EEAD4',
   teal400: '#2DD4BF',
-  teal500: '#14B8A6',  // ← secondary accent
+  teal500: '#14B8A6',
   teal600: '#0D9488',
   teal700: '#0F766E',
 
   // Neutrals — warm gray (not cold)
   gray50: '#FAFAFA',
-  gray100: '#F5F5F4',
-  gray200: '#E7E5E4',
-  gray300: '#D6D3D1',
-  gray400: '#A8A29E',
-  gray500: '#78716C',
-  gray600: '#57534E',
-  gray700: '#44403C',
-  gray800: '#292524',
-  gray900: '#1C1917',
+  gray100: '#F5F6F8',
+  gray200: '#E5E7EB',
+  gray300: '#D1D5DB',
+  gray400: '#9CA3AF',
+  gray500: '#707782',
+  gray600: '#4B5563',
+  gray700: '#374151',
+  gray800: '#1F2937',
+  gray900: '#111318',
 
   // Dark mode neutrals — elegant navy/graphite
   navy50: '#F0F4F8',
@@ -53,14 +90,14 @@ export const palette = {
   navy600: '#486581',
   navy700: '#334E68',
   navy800: '#243B53',
-  navy900: '#102A43',
-  navy950: '#0A1929',
+  navy900: '#111318',
+  navy950: '#0A0B0D',
 
   // Semantic
-  success: '#34D399',
-  warning: '#FBBF24',
-  danger: '#F87171',
-  info: '#38BDF8',
+  success: '#22A46A',
+  warning: '#AD7A14',
+  danger: '#D9555E',
+  info: '#3976FF',
 
   // Absolutes
   white: '#FFFFFF',
@@ -136,12 +173,16 @@ export const spacing = {
 
 export const radii = {
   none: 0,
+  xs: 4,
   sm: 6,
   md: 10,
+  input: 13,
   lg: 14,
   xl: 18,
+  card: 22,
   '2xl': 24,
   '3xl': 32,
+  pill: 999,
   full: 9999,
 } as const;
 

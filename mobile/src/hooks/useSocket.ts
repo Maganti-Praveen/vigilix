@@ -33,19 +33,19 @@ export function useSocket() {
       return;
     }
 
-    console.log('[useSocket] 🔌 Connecting to server...');
+    console.log('[useSocket] Connecting to server...');
     setConnectionStatus('connecting');
     const socket = socketService.connect();
 
     socket.on('connect', () => {
-      console.log('[useSocket] ✅ Socket connected! ID:', socket.id);
+      console.log('[useSocket] Socket connected! ID:', socket.id);
       isConnectedRef.current = true;
       setConnectionStatus('connected');
 
       // Phase 9: Auto-rejoin room after reconnection
       const { roomCode: activeRoom, mode } = useAppStore.getState();
       if (activeRoom) {
-        console.log('[useSocket] 🔄 Reconnected — rejoining room:', activeRoom);
+        console.log('[useSocket] Reconnected — rejoining room:', activeRoom);
         socketService.emit(SOCKET_EVENTS.RECONNECT_TO_ROOM, {
           roomCode: activeRoom,
           role: mode || 'camera',
@@ -54,54 +54,54 @@ export function useSocket() {
     });
 
     socket.on('disconnect', (reason: string) => {
-      console.log('[useSocket] ❌ Socket disconnected:', reason);
+      console.log('[useSocket] Socket disconnected:', reason);
       isConnectedRef.current = false;
       setConnectionStatus('disconnected');
     });
 
     socket.on('connect_error', (err: any) => {
-      console.error('[useSocket] ❌ Connection error:', err?.message);
+      console.error('[useSocket] Connection error:', err?.message);
       setConnectionStatus('disconnected');
       setError('Failed to connect to server');
     });
 
     // Camera-specific events
     socket.on(SOCKET_EVENTS.VIEWER_CONNECTED, ({ viewerCount }: any) => {
-      console.log('[useSocket] 👁️ Viewer connected, count:', viewerCount);
+      console.log('[useSocket] Viewer connected, count:', viewerCount);
       setViewerCount(viewerCount);
     });
 
     socket.on(SOCKET_EVENTS.VIEWER_DISCONNECTED, ({ viewerCount }: any) => {
-      console.log('[useSocket] 👁️ Viewer disconnected, count:', viewerCount);
+      console.log('[useSocket] Viewer disconnected, count:', viewerCount);
       setViewerCount(viewerCount);
     });
 
     // Viewer-specific events
     socket.on(SOCKET_EVENTS.STREAM_STARTED, () => {
-      console.log('[useSocket] 📡 Stream started (viewer notified)');
+      console.log('[useSocket] Stream started (viewer notified)');
       setIsStreaming(true);
     });
 
     socket.on(SOCKET_EVENTS.STREAM_STOPPED, () => {
-      console.log('[useSocket] ⏹️ Stream stopped (viewer notified)');
+      console.log('[useSocket] Stream stopped (viewer notified)');
       setIsStreaming(false);
     });
 
     socket.on(SOCKET_EVENTS.CAMERA_OFFLINE, () => {
-      console.log('[useSocket] 📷 Camera went offline');
+      console.log('[useSocket] Camera went offline');
       setConnectionStatus('disconnected');
       setIsStreaming(false);
       setError('Camera went offline');
     });
 
     socket.on(SOCKET_EVENTS.CAMERA_RECONNECTED, () => {
-      console.log('[useSocket] 📷 Camera reconnected');
+      console.log('[useSocket] Camera reconnected');
       setConnectionStatus('connected');
     });
 
     // Flash command (camera receives from viewer)
     socket.on(SOCKET_EVENTS.FLASH_COMMAND, ({ enabled }: any) => {
-      console.log('[useSocket] 🔦 Flash command received:', enabled);
+      console.log('[useSocket] Flash command received:', enabled);
       setFlashOn(enabled);
       if (onFlashCommandRef.current) {
         onFlashCommandRef.current(enabled);
@@ -119,7 +119,7 @@ export function useSocket() {
 
     // Recording command (camera receives from viewer)
     socket.on(SOCKET_EVENTS.RECORDING_COMMAND, ({ action }: any) => {
-      console.log('[useSocket] 🎬 Recording command received:', action);
+      console.log('[useSocket] Recording command received:', action);
       if (onRecordingCommandRef.current) {
         onRecordingCommandRef.current(action);
       }
@@ -128,10 +128,10 @@ export function useSocket() {
 
   // Create room (camera mode)
   const createRoom = useCallback((): Promise<CreateRoomResponse> => {
-    console.log('[useSocket] 🏠 Creating room...');
+    console.log('[useSocket] Creating room...');
     return new Promise((resolve, reject) => {
       if (!socketService.isConnected()) {
-        console.error('[useSocket] ❌ Cannot create room - not connected');
+        console.error('[useSocket] Cannot create room - not connected');
         resolve({ success: false, error: 'Not connected to server' });
         return;
       }
@@ -142,7 +142,7 @@ export function useSocket() {
       const timer = setTimeout(() => {
         if (!resolved) {
           resolved = true;
-          console.warn('[useSocket] ⚠️ Create room timeout - no response after 10s');
+          console.warn('[useSocket] Create room timeout - no response after 10s');
           resolve({ success: false, error: 'Server timeout' });
         }
       }, 10000);
@@ -152,12 +152,12 @@ export function useSocket() {
         if (resolved) return; // already timed out
         resolved = true;
         clearTimeout(timer);
-        console.log('[useSocket] 🏠 Create room response:', JSON.stringify(response));
+        console.log('[useSocket] Create room response:', JSON.stringify(response));
         if (response.success && response.roomCode) {
-          console.log('[useSocket] ✅ Room created! Code:', response.roomCode);
+          console.log('[useSocket] Room created! Code:', response.roomCode);
           setRoomCode(response.roomCode);
         } else {
-          console.error('[useSocket] ❌ Room creation failed:', response.error);
+          console.error('[useSocket] Room creation failed:', response.error);
         }
         resolve(response);
       });
@@ -166,7 +166,7 @@ export function useSocket() {
 
   // Join room (viewer mode)
   const joinRoom = useCallback((roomCode: string): Promise<JoinRoomResponse> => {
-    console.log('[useSocket] 🚪 Joining room:', roomCode);
+    console.log('[useSocket] Joining room:', roomCode);
     return new Promise((resolve) => {
       if (!socketService.isConnected()) {
         resolve({ success: false, error: 'Not connected to server' });
@@ -177,7 +177,7 @@ export function useSocket() {
         SOCKET_EVENTS.JOIN_ROOM,
         { roomCode },
         (response: JoinRoomResponse) => {
-          console.log('[useSocket] 🚪 Join room response:', JSON.stringify(response));
+          console.log('[useSocket] Join room response:', JSON.stringify(response));
           if (response.success && response.roomCode) {
             setRoomCode(response.roomCode);
             if (response.isStreaming) {
@@ -196,7 +196,7 @@ export function useSocket() {
 
   // Leave room
   const leaveRoom = useCallback(() => {
-    console.log('[useSocket] 🚪 Leaving room');
+    console.log('[useSocket] Leaving room');
     socketService.emit(SOCKET_EVENTS.LEAVE_ROOM);
     setRoomCode(null);
     setViewerCount(0);
@@ -204,25 +204,25 @@ export function useSocket() {
 
   // Stream controls
   const startStream = useCallback(() => {
-    console.log('[useSocket] 📡 Emitting start-stream');
+    console.log('[useSocket] Emitting start-stream');
     socketService.emit(SOCKET_EVENTS.START_STREAM);
     setIsStreaming(true);
   }, [setIsStreaming]);
 
   const stopStream = useCallback(() => {
-    console.log('[useSocket] ⏹️ Emitting stop-stream');
+    console.log('[useSocket] Emitting stop-stream');
     socketService.emit(SOCKET_EVENTS.STOP_STREAM);
     setIsStreaming(false);
   }, [setIsStreaming]);
 
   // Device controls
   const toggleFlash = useCallback((roomCode: string, enabled: boolean) => {
-    console.log('[useSocket] 🔦 Toggle flash:', enabled, 'room:', roomCode);
+    console.log('[useSocket] Toggle flash:', enabled, 'room:', roomCode);
     socketService.emit(SOCKET_EVENTS.TOGGLE_FLASH, { roomCode, enabled });
   }, []);
 
   const toggleMic = useCallback((roomCode: string, enabled: boolean) => {
-    console.log('[useSocket] 🎙️ Toggle mic:', enabled);
+    console.log('[useSocket] Toggle mic:', enabled);
     socketService.emit(SOCKET_EVENTS.TOGGLE_MIC, { roomCode, enabled });
   }, []);
 
@@ -233,7 +233,7 @@ export function useSocket() {
 
   // Disconnect
   const disconnect = useCallback(() => {
-    console.log('[useSocket] 🔌 Disconnecting...');
+    console.log('[useSocket] Disconnecting...');
     socketService.disconnect();
     isConnectedRef.current = false;
     setConnectionStatus('disconnected');
@@ -251,12 +251,12 @@ export function useSocket() {
 
   // Remote recording control (viewer sends to camera)
   const startRecording = useCallback((roomCode: string) => {
-    console.log('[useSocket] 🔴 Emitting start-recording, room:', roomCode);
+    console.log('[useSocket] Emitting start-recording, room:', roomCode);
     socketService.emit(SOCKET_EVENTS.START_RECORDING, { roomCode });
   }, []);
 
   const stopRecording = useCallback((roomCode: string) => {
-    console.log('[useSocket] ⏹️ Emitting stop-recording, room:', roomCode);
+    console.log('[useSocket] Emitting stop-recording, room:', roomCode);
     socketService.emit(SOCKET_EVENTS.STOP_RECORDING, { roomCode });
   }, []);
 

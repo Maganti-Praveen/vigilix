@@ -8,6 +8,9 @@
 
 const admin = require('firebase-admin');
 
+const path = require('path');
+const fs = require('fs');
+
 let initialized = false;
 
 /**
@@ -19,20 +22,34 @@ function initializeFirebase() {
 
   try {
     const serviceAccountEnv = process.env.FIREBASE_SERVICE_ACCOUNT;
+    const serviceAccountPath = process.env.FIREBASE_SERVICE_ACCOUNT_PATH;
+    const defaultLocalPath = path.join(__dirname, '../../vigilix6-firebase-adminsdk-fbsvc-ba23ee9b7f.json');
+
+    let serviceAccount = null;
 
     if (serviceAccountEnv) {
       // Parse from environment variable (for Render deployment)
-      const serviceAccount = JSON.parse(serviceAccountEnv);
+      serviceAccount = JSON.parse(serviceAccountEnv);
+      console.log('[FCM] Loaded credentials from FIREBASE_SERVICE_ACCOUNT env var');
+    } else if (serviceAccountPath && fs.existsSync(serviceAccountPath)) {
+      serviceAccount = require(path.resolve(serviceAccountPath));
+      console.log(`[FCM] Loaded credentials from path: ${serviceAccountPath}`);
+    } else if (fs.existsSync(defaultLocalPath)) {
+      serviceAccount = require(defaultLocalPath);
+      console.log(`[FCM] Loaded credentials from local file: ${path.basename(defaultLocalPath)}`);
+    }
+
+    if (serviceAccount) {
       admin.initializeApp({
         credential: admin.credential.cert(serviceAccount),
       });
-      console.log('[FCM] ✅ Firebase initialized from environment variable');
+      console.log(`[FCM] Firebase Admin initialized for project: ${serviceAccount.project_id || 'unknown'}`);
       initialized = true;
     } else {
-      console.warn('[FCM] ⚠️ No FIREBASE_SERVICE_ACCOUNT env var. Push notifications disabled.');
+      console.warn('[FCM] No FIREBASE_SERVICE_ACCOUNT found. Push notifications disabled.');
     }
   } catch (error) {
-    console.error('[FCM] ❌ Firebase initialization error:', error.message);
+    console.error('[FCM] Firebase initialization error:', error.message);
   }
 }
 
@@ -65,7 +82,7 @@ async function sendWakeNotification(fcmToken, roomCode) {
       },
       // Notification for visual feedback
       notification: {
-        title: '📹 Wake Up Camera',
+        title: 'Wake Up Camera',
         body: 'A viewer wants to connect to your camera',
       },
       android: {
@@ -75,16 +92,15 @@ async function sendWakeNotification(fcmToken, roomCode) {
           channelId: 'wake_camera',
           priority: 'max',
           sound: 'default',
-          clickAction: 'FLUTTER_NOTIFICATION_CLICK',
         },
       },
     };
 
     const response = await admin.messaging().send(message);
-    console.log(`[FCM] ✅ Wake notification sent: ${response}`);
+    console.log(`[FCM] Wake notification sent: ${response}`);
     return { success: true, messageId: response };
   } catch (error) {
-    console.error('[FCM] ❌ Send error:', error.message);
+    console.error('[FCM] Send error:', error.message);
 
     // Handle token expiry
     if (error.code === 'messaging/registration-token-not-registered' ||

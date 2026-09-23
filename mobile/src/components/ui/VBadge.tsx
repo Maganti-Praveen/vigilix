@@ -13,7 +13,7 @@ interface VBadgeProps {
   variant?: 'live' | 'recording' | 'success' | 'warning' | 'info' | 'default';
   pulse?: boolean;
   size?: 'sm' | 'md';
-  icon?: string;
+  icon?: React.ReactNode;
 }
 
 export function VBadge({ label, variant = 'default', pulse = false, size = 'sm', icon }: VBadgeProps) {
@@ -50,7 +50,11 @@ export function VBadge({ label, variant = 'default', pulse = false, size = 'sm',
       ]}
     >
       {(variant === 'live' || variant === 'recording') && dotElement}
-      {icon && <Text style={{ fontSize: isSmall ? 10 : 12 }}>{icon}</Text>}
+      {React.isValidElement(icon) ? (
+        icon
+      ) : typeof icon === 'string' ? (
+        <Text style={{ fontSize: isSmall ? 10 : 12 }}>{icon}</Text>
+      ) : null}
       <Text
         style={[
           styles.label,

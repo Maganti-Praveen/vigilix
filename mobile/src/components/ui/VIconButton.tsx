@@ -12,7 +12,7 @@ import { spacing, radii } from '../../design/tokens';
 import { useScalePress } from '../../design/animations';
 
 interface VIconButtonProps {
-  icon: string;
+  icon: React.ReactNode;
   onPress: () => void;
   label?: string;
   size?: 'sm' | 'md' | 'lg';
@@ -73,7 +73,11 @@ export function VIconButton({
           disabled && { opacity: 0.4 },
         ]}
       >
-        <Text style={{ fontSize: iconSize }}>{icon}</Text>
+        {React.isValidElement(icon) ? (
+          icon
+        ) : typeof icon === 'string' ? (
+          <Text style={{ fontSize: iconSize }}>{icon}</Text>
+        ) : null}
       </TouchableOpacity>
       {label && (
         <Text

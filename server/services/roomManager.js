@@ -64,13 +64,17 @@ function joinRoom(roomCode, viewerSocketId) {
   return room;
 }
 
+function normalizeCode(code) {
+  return typeof code === 'string' ? code.toUpperCase().trim() : '';
+}
+
 /**
  * Remove a viewer from a room
  * @param {string} roomCode - The room code
  * @param {string} viewerSocketId - Socket ID of the viewer to remove
  */
 function leaveRoom(roomCode, viewerSocketId) {
-  const room = rooms.get(roomCode);
+  const room = rooms.get(normalizeCode(roomCode));
   if (!room) return;
 
   room.viewers.delete(viewerSocketId);
@@ -85,7 +89,7 @@ function leaveRoom(roomCode, viewerSocketId) {
  * @returns {object|null} Room data or null
  */
 function getRoom(roomCode) {
-  return rooms.get(roomCode?.toUpperCase()?.trim()) || null;
+  return rooms.get(normalizeCode(roomCode)) || null;
 }
 
 /**
@@ -121,8 +125,13 @@ function getRoomBySocket(socketId) {
  * @param {string} roomCode - The room code to delete
  */
 function deleteRoom(roomCode) {
-  rooms.delete(roomCode);
-  console.log(`[RoomManager] Room deleted: ${roomCode}`);
+  const code = normalizeCode(roomCode);
+  const room = rooms.get(code);
+  if (room && room.cameraGraceTimer) {
+    clearTimeout(room.cameraGraceTimer);
+  }
+  rooms.delete(code);
+  console.log(`[RoomManager] Room deleted: ${code}`);
 }
 
 /**
@@ -131,7 +140,7 @@ function deleteRoom(roomCode) {
  * @param {boolean} isStreaming - Whether the camera is streaming
  */
 function updateStreamStatus(roomCode, isStreaming) {
-  const room = rooms.get(roomCode);
+  const room = rooms.get(normalizeCode(roomCode));
   if (room) {
     room.isStreaming = isStreaming;
     room.lastActivity = Date.now();
@@ -145,10 +154,50 @@ function updateStreamStatus(roomCode, isStreaming) {
  * @param {*} value - Property value
  */
 function updateRoomProperty(roomCode, key, value) {
-  const room = rooms.get(roomCode);
+  const room = rooms.get(normalizeCode(roomCode));
   if (room) {
     room[key] = value;
     room.lastActivity = Date.now();
+  }
+}
+
+/**
+ * Set camera as offline and start a grace period before deleting room
+ * @param {string} roomCode - The room code
+ * @param {Function} [onExpired] - Callback if grace period expires
+ * @param {number} [graceMs=90000] - Grace period in ms (default 90s)
+ */
+function setCameraOffline(roomCode, onExpired, graceMs = 90000) {
+  const room = rooms.get(normalizeCode(roomCode));
+  if (!room) return;
+
+  room.cameraSocketId = null;
+  room.lastActivity = Date.now();
+
+  if (room.cameraGraceTimer) {
+    clearTimeout(room.cameraGraceTimer);
+  }
+
+  room.cameraGraceTimer = setTimeout(() => {
+    console.log(`[RoomManager] Camera grace period expired for room: ${room.code}`);
+    deleteRoom(room.code);
+    if (typeof onExpired === 'function') {
+      onExpired();
+    }
+  }, graceMs);
+}
+
+/**
+ * Cancel camera offline grace period when camera reconnects
+ * @param {string} roomCode - The room code
+ */
+function cancelCameraGracePeriod(roomCode) {
+  const room = rooms.get(normalizeCode(roomCode));
+  if (room && room.cameraGraceTimer) {
+    clearTimeout(room.cameraGraceTimer);
+    room.cameraGraceTimer = null;
+    room.lastActivity = Date.now();
+    console.log(`[RoomManager] Camera grace period cancelled for room: ${room.code}`);
   }
 }
 
@@ -157,14 +206,15 @@ function updateRoomProperty(roomCode, key, value) {
  * @param {string} roomCode - The room code
  */
 function scheduleRoomCleanup(roomCode) {
+  const code = normalizeCode(roomCode);
   setTimeout(() => {
-    const room = rooms.get(roomCode);
+    const room = rooms.get(code);
     if (room && Date.now() - room.lastActivity >= ROOM_EXPIRY_MS) {
-      deleteRoom(roomCode);
-      console.log(`[RoomManager] Room ${roomCode} expired and cleaned up`);
+      deleteRoom(code);
+      console.log(`[RoomManager] Room ${code} expired and cleaned up`);
     } else if (room) {
       // Reschedule if still active
-      scheduleRoomCleanup(roomCode);
+      scheduleRoomCleanup(code);
     }
   }, ROOM_EXPIRY_MS);
 }
@@ -207,6 +257,8 @@ module.exports = {
   deleteRoom,
   updateStreamStatus,
   updateRoomProperty,
+  setCameraOffline,
+  cancelCameraGracePeriod,
   getActiveRoomsCount,
   getRoomStats,
 };

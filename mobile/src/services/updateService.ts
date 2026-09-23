@@ -88,8 +88,8 @@ class UpdateService {
       .join('\n');
 
     const title = info.updateRequired
-      ? '🔴 Update Required'
-      : '🆕 Update Available';
+      ? 'Update Required'
+      : 'Update Available';
 
     const message = `Vigilix v${info.currentVersion} is available!\n\nWhat's new:\n${changelogText}`;
 

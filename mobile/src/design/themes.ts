@@ -61,6 +61,7 @@ export interface VigilixTheme {
     input: string;
     inputBorder: string;
     inputFocus: string;
+    surface2: string;
   };
 
   // Specific UI
@@ -69,6 +70,15 @@ export interface VigilixTheme {
     border: string;
     active: string;
     inactive: string;
+  };
+
+  // HUD (Camera/Viewer streaming overlays)
+  hud: {
+    background: string;
+    dock: string;
+    border: string;
+    text: string;
+    muted: string;
   };
 
   // Gradients
@@ -83,70 +93,79 @@ export interface VigilixTheme {
   statusBar: 'light-content' | 'dark-content';
 }
 
-// ─── Light Theme ─────────────────────────────────────────────────
+// ─── Light Theme (DEFAULT) ───────────────────────────────────────
 
 export const lightTheme: VigilixTheme = {
   mode: 'light',
 
   bg: {
-    primary: '#FAFAF9',        // warm off-white
-    secondary: '#F5F5F4',      // subtle warm gray
-    tertiary: '#EEEEEC',
-    elevated: palette.white,
-    inverse: palette.navy950,
+    primary: '#F5F6F8',
+    secondary: '#FFFFFF',
+    tertiary: '#EAECEF',
+    elevated: '#FFFFFF',
+    inverse: '#0A0B0D',
   },
 
   text: {
-    primary: '#1A1A1A',
-    secondary: '#6B7280',
-    tertiary: '#9CA3AF',
-    inverse: palette.white,
-    accent: palette.blue500,
+    primary: '#111318',
+    secondary: '#707782',
+    tertiary: '#949BA6',
+    inverse: '#FFFFFF',
+    accent: '#3976FF',
   },
 
   accent: {
-    primary: palette.blue500,
-    primaryMuted: 'rgba(79, 142, 247, 0.12)',
-    secondary: palette.teal500,
-    secondaryMuted: 'rgba(20, 184, 166, 0.10)',
+    primary: '#3976FF',
+    primaryMuted: 'rgba(57, 118, 255, 0.12)',
+    secondary: '#6A98FF',
+    secondaryMuted: 'rgba(106, 152, 255, 0.12)',
   },
 
   border: {
-    primary: '#E5E5E3',
-    secondary: '#D4D4D2',
-    accent: palette.blue200,
+    primary: 'rgba(18, 23, 31, 0.09)',
+    secondary: 'rgba(18, 23, 31, 0.14)',
+    accent: 'rgba(57, 118, 255, 0.35)',
   },
 
   status: {
-    success: '#10B981',
-    warning: '#F59E0B',
-    danger: '#EF4444',
-    info: '#3B82F6',
-    live: '#EF4444',
+    success: '#22A46A',
+    warning: '#AD7A14',
+    danger: '#D9555E',
+    info: '#3976FF',
+    live: '#D9555E',
   },
 
   surface: {
-    card: palette.white,
-    cardBorder: '#F0F0EE',
-    glass: 'rgba(255, 255, 255, 0.72)',
-    glassBorder: 'rgba(255, 255, 255, 0.2)',
-    input: '#F5F5F4',
-    inputBorder: '#E5E5E3',
-    inputFocus: palette.blue500,
+    card: '#FFFFFF',
+    cardBorder: 'rgba(18, 23, 31, 0.09)',
+    glass: 'rgba(255, 255, 255, 0.78)',
+    glassBorder: 'rgba(18, 23, 31, 0.09)',
+    input: '#FFFFFF',
+    inputBorder: 'rgba(18, 23, 31, 0.12)',
+    inputFocus: '#3976FF',
+    surface2: 'rgba(255, 255, 255, 0.94)',
   },
 
   nav: {
-    background: 'rgba(250, 250, 249, 0.88)',
-    border: '#E5E5E3',
-    active: palette.blue500,
-    inactive: '#9CA3AF',
+    background: 'rgba(255, 255, 255, 0.92)',
+    border: 'rgba(18, 23, 31, 0.09)',
+    active: '#3976FF',
+    inactive: '#707782',
+  },
+
+  hud: {
+    background: 'rgba(4, 8, 13, 0.62)',
+    dock: 'rgba(6, 9, 14, 0.75)',
+    border: 'rgba(255, 255, 255, 0.12)',
+    text: '#F5F6F8',
+    muted: '#9299A3',
   },
 
   gradient: {
-    primary: [palette.blue500, palette.blue600],
-    accent: [palette.blue400, palette.teal400],
-    surface: ['#FAFAF9', '#F5F5F4'],
-    splash: [palette.navy900, palette.navy950, '#060F1D'],
+    primary: ['#6A98FF', '#3976FF'],
+    accent: ['#6A98FF', '#3976FF'],
+    surface: ['#FFFFFF', '#F5F6F8'],
+    splash: ['#FFFFFF', '#F5F6F8', '#EAECEF'],
   },
 
   statusBar: 'dark-content',
@@ -158,64 +177,73 @@ export const darkTheme: VigilixTheme = {
   mode: 'dark',
 
   bg: {
-    primary: '#0B1121',         // deep elegant navy
-    secondary: '#0F1729',       // slightly lighter
-    tertiary: '#152036',
-    elevated: '#1A2744',
-    inverse: palette.white,
+    primary: '#0A0B0D',
+    secondary: '#111318',
+    tertiary: '#171920',
+    elevated: '#171920',
+    inverse: '#F4F5F7',
   },
 
   text: {
-    primary: '#F1F5F9',
-    secondary: '#94A3B8',
-    tertiary: '#64748B',
-    inverse: '#1A1A1A',
-    accent: '#60A5FA',
+    primary: '#F4F5F7',
+    secondary: '#9299A3',
+    tertiary: '#5D6470',
+    inverse: '#111318',
+    accent: '#6F9CFF',
   },
 
   accent: {
-    primary: '#60A5FA',        // slightly lighter blue for dark mode
-    primaryMuted: 'rgba(96, 165, 250, 0.15)',
-    secondary: '#2DD4BF',
-    secondaryMuted: 'rgba(45, 212, 191, 0.12)',
+    primary: '#6F9CFF',
+    primaryMuted: 'rgba(111, 156, 255, 0.15)',
+    secondary: '#91B4FF',
+    secondaryMuted: 'rgba(145, 180, 255, 0.12)',
   },
 
   border: {
-    primary: 'rgba(148, 163, 184, 0.12)',
-    secondary: 'rgba(148, 163, 184, 0.20)',
-    accent: 'rgba(96, 165, 250, 0.30)',
+    primary: 'rgba(255, 255, 255, 0.095)',
+    secondary: 'rgba(255, 255, 255, 0.16)',
+    accent: 'rgba(111, 156, 255, 0.35)',
   },
 
   status: {
-    success: '#34D399',
-    warning: '#FBBF24',
-    danger: '#F87171',
-    info: '#60A5FA',
-    live: '#F87171',
+    success: '#56D493',
+    warning: '#EFBF62',
+    danger: '#FF6F74',
+    info: '#6F9CFF',
+    live: '#FF6F74',
   },
 
   surface: {
-    card: 'rgba(15, 23, 42, 0.60)',
-    cardBorder: 'rgba(148, 163, 184, 0.08)',
-    glass: 'rgba(11, 17, 33, 0.75)',
-    glassBorder: 'rgba(148, 163, 184, 0.06)',
-    input: 'rgba(30, 41, 59, 0.50)',
-    inputBorder: 'rgba(148, 163, 184, 0.15)',
-    inputFocus: '#60A5FA',
+    card: 'rgba(255, 255, 255, 0.055)',
+    cardBorder: 'rgba(255, 255, 255, 0.095)',
+    glass: 'rgba(17, 19, 24, 0.82)',
+    glassBorder: 'rgba(255, 255, 255, 0.095)',
+    input: 'rgba(255, 255, 255, 0.06)',
+    inputBorder: 'rgba(255, 255, 255, 0.12)',
+    inputFocus: '#6F9CFF',
+    surface2: 'rgba(255, 255, 255, 0.085)',
   },
 
   nav: {
-    background: 'rgba(11, 17, 33, 0.92)',
-    border: 'rgba(148, 163, 184, 0.08)',
-    active: '#60A5FA',
-    inactive: '#64748B',
+    background: 'rgba(17, 19, 24, 0.90)',
+    border: 'rgba(255, 255, 255, 0.095)',
+    active: '#6F9CFF',
+    inactive: '#9299A3',
+  },
+
+  hud: {
+    background: 'rgba(4, 8, 13, 0.62)',
+    dock: 'rgba(6, 9, 14, 0.75)',
+    border: 'rgba(255, 255, 255, 0.12)',
+    text: '#F5F6F8',
+    muted: '#9299A3',
   },
 
   gradient: {
-    primary: ['#3B82F6', '#2563EB'],
-    accent: ['#60A5FA', '#2DD4BF'],
-    surface: ['#0B1121', '#0F1729'],
-    splash: ['#060F1D', '#0B1121', '#101B33'],
+    primary: ['#91B4FF', '#6F9CFF'],
+    accent: ['#91B4FF', '#6F9CFF'],
+    surface: ['#111318', '#0A0B0D'],
+    splash: ['#0A0B0D', '#111318', '#171920'],
   },
 
   statusBar: 'light-content',

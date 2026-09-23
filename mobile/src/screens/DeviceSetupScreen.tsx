@@ -1,220 +1,439 @@
 /**
  * DeviceSetupScreen — Vigilix
- * First-time device registration: "Use this phone as Camera or Viewer?"
- * Shows after first login when no devices are registered.
+ * First-time device registration matching reference HTML:
+ * Select Camera vs Viewer role, detected model info, and dynamic CTA.
  */
 
 import React, { useState, useEffect } from 'react';
 import {
-  View, Text, StyleSheet, StatusBar, Alert,
-  TouchableOpacity, ActivityIndicator, Platform,
+  View,
+  Text,
+  StyleSheet,
+  StatusBar,
+  Alert,
+  TouchableOpacity,
+  ScrollView,
 } from 'react-native';
-import { LinearGradient } from 'expo-linear-gradient';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import * as Device from 'expo-device';
+import { ArrowLeft, Video, Eye, Smartphone, Check } from 'lucide-react-native';
 import { useAuthStore } from '../store/authStore';
+import { useTheme } from '../design/ThemeContext';
+import { VButton } from '../components/ui';
+import { radii, spacing, typography } from '../design/tokens';
 import fcmService from '../services/fcmService';
 
 interface DeviceSetupScreenProps {
   onComplete: () => void;
+  onBack?: () => void;
 }
 
-export default function DeviceSetupScreen({ onComplete }: DeviceSetupScreenProps) {
+export default function DeviceSetupScreen({ onComplete, onBack }: DeviceSetupScreenProps) {
+  const { theme, isDark } = useTheme();
+  const insets = useSafeAreaInsets();
   const { registerDevice } = useAuthStore();
+
+  const [selectedRole, setSelectedRole] = useState<'camera' | 'viewer'>('camera');
   const [isRegistering, setIsRegistering] = useState(false);
-  const [selectedRole, setSelectedRole] = useState<'camera' | 'viewer' | null>(null);
   const [fcmToken, setFcmToken] = useState<string | null>(null);
 
   const deviceModel = Device.modelName || Device.deviceName || 'Android Device';
   const deviceName = `${deviceModel}`;
 
-  // Initialize FCM on mount to get push token
+  // Initialize FCM on mount
   useEffect(() => {
-    fcmService.initialize().then(token => {
-      if (token) setFcmToken(token);
-    }).catch(() => {});
+    fcmService.initialize()
+      .then((token) => {
+        if (token) setFcmToken(token);
+      })
+      .catch(() => {});
   }, []);
 
-  const handleSelectRole = async (role: 'camera' | 'viewer') => {
-    setSelectedRole(role);
+  const handleSave = async () => {
     setIsRegistering(true);
-
     try {
-      const name = role === 'camera'
+      const name = selectedRole === 'camera'
         ? `${deviceName} Camera`
         : `${deviceName} Viewer`;
 
-      const device = await registerDevice(name, deviceModel, role, fcmToken || undefined);
+      const device = await registerDevice(name, deviceModel, selectedRole, fcmToken || undefined);
 
       if (device) {
         onComplete();
       } else {
-        Alert.alert('Error', 'Failed to register device. Please try again.');
-        setSelectedRole(null);
+        Alert.alert('Registration Failed', 'Failed to register device. Please try again.');
       }
     } catch (error: any) {
       Alert.alert('Error', error.message || 'Registration failed');
-      setSelectedRole(null);
     } finally {
       setIsRegistering(false);
     }
   };
 
   return (
-    <LinearGradient
-      colors={['#060F1D', '#0A1628', '#0F1F3D']}
-      style={styles.container}
-    >
-      <StatusBar barStyle="light-content" translucent backgroundColor="transparent" />
+    <View style={[styles.container, { backgroundColor: theme.bg.primary }]}>
+      <StatusBar
+        barStyle={isDark ? 'light-content' : 'dark-content'}
+        backgroundColor="transparent"
+        translucent
+      />
 
-      {/* Header */}
-      <View style={styles.header}>
-        <Text style={styles.emoji}>📱</Text>
-        <Text style={styles.title}>Set Up This Device</Text>
-        <Text style={styles.subtitle}>
-          How will you use {deviceModel}?
+      <ScrollView
+        contentContainerStyle={[
+          styles.scrollContent,
+          {
+            paddingTop: Math.max(insets.top + 10, 24),
+            paddingBottom: Math.max(insets.bottom + 20, 28),
+          },
+        ]}
+        showsVerticalScrollIndicator={false}
+      >
+        {/* Top Header matching reference */}
+        <View style={styles.topBar}>
+          <View>
+            <Text style={[styles.kicker, { color: theme.text.secondary }]}>
+              FIRST-TIME SETUP
+            </Text>
+            <Text style={[styles.screenTitle, { color: theme.text.primary }]}>
+              Configure device
+            </Text>
+          </View>
+
+          {onBack && (
+            <TouchableOpacity
+              activeOpacity={0.7}
+              onPress={onBack}
+              style={[
+                styles.iconButton,
+                {
+                  backgroundColor: theme.surface.surface2,
+                  borderColor: theme.border.primary,
+                },
+              ]}
+            >
+              <ArrowLeft size={16} color={theme.text.primary} />
+            </TouchableOpacity>
+          )}
+        </View>
+
+        <Text style={[styles.subtitle, { color: theme.text.secondary }]}>
+          Choose how this phone will participate in your private surveillance network.
         </Text>
-      </View>
 
-      {/* Role Cards */}
-      <View style={styles.cardsContainer}>
-        <TouchableOpacity
-          style={[styles.card, selectedRole === 'camera' && styles.cardSelected]}
-          onPress={() => handleSelectRole('camera')}
-          disabled={isRegistering}
-          activeOpacity={0.8}
-        >
-          <LinearGradient
-            colors={['#1E40AF', '#2563EB']}
-            style={styles.cardGradient}
+        {/* 2 Interactive Role Cards */}
+        <View style={styles.roleCardsGroup}>
+          {/* Camera Role Card */}
+          <TouchableOpacity
+            activeOpacity={0.85}
+            onPress={() => setSelectedRole('camera')}
+            style={[
+              styles.roleCard,
+              {
+                backgroundColor: theme.surface.card,
+                borderColor: selectedRole === 'camera' ? theme.accent.primary : theme.border.primary,
+              },
+              selectedRole === 'camera' && {
+                borderWidth: 1.5,
+                shadowColor: theme.accent.primary,
+                shadowOffset: { width: 0, height: 6 },
+                shadowOpacity: 0.16,
+                shadowRadius: 16,
+                elevation: 4,
+              },
+            ]}
           >
-            <Text style={styles.cardEmoji}>📷</Text>
-            <Text style={styles.cardTitle}>Security Camera</Text>
-            <Text style={styles.cardDescription}>
-              This phone will stream video and audio. Place it where you want to monitor.
-            </Text>
-            <View style={styles.cardFeatures}>
-              <Text style={styles.featureText}>• Streams live video</Text>
-              <Text style={styles.featureText}>• Background recording</Text>
-              <Text style={styles.featureText}>• Remote flash control</Text>
-              <Text style={styles.featureText}>• Saves recordings locally</Text>
-            </View>
-            {isRegistering && selectedRole === 'camera' && (
-              <ActivityIndicator color="#FFF" style={styles.loader} />
-            )}
-          </LinearGradient>
-        </TouchableOpacity>
+            <View style={styles.cardHeaderRow}>
+              <View style={styles.cardTitleWrap}>
+                <View
+                  style={[
+                    styles.roleIconWrap,
+                    {
+                      backgroundColor: selectedRole === 'camera'
+                        ? theme.accent.primaryMuted
+                        : theme.surface.surface2,
+                    },
+                  ]}
+                >
+                  <Video
+                    size={16}
+                    color={selectedRole === 'camera' ? theme.accent.primary : theme.text.secondary}
+                  />
+                </View>
+                <View>
+                  <Text style={[styles.roleTitle, { color: theme.text.primary }]}>
+                    Camera device
+                  </Text>
+                  <Text style={[styles.roleSubtitle, { color: theme.text.secondary }]}>
+                    Stationary unit streaming video & audio
+                  </Text>
+                </View>
+              </View>
 
-        <TouchableOpacity
-          style={[styles.card, selectedRole === 'viewer' && styles.cardSelected]}
-          onPress={() => handleSelectRole('viewer')}
-          disabled={isRegistering}
-          activeOpacity={0.8}
-        >
-          <LinearGradient
-            colors={['#0D9488', '#0F766E']}
-            style={styles.cardGradient}
+              <View
+                style={[
+                  styles.roleBadge,
+                  {
+                    backgroundColor: theme.surface.surface2,
+                    borderColor: theme.border.primary,
+                  },
+                ]}
+              >
+                <View style={[styles.badgeDot, { backgroundColor: theme.status.success }]} />
+                <Text style={[styles.badgeText, { color: theme.text.secondary }]}>
+                  Stationary
+                </Text>
+              </View>
+            </View>
+
+            <Text style={[styles.cardDescription, { color: theme.text.secondary }]}>
+              Optimized for persistent power, high efficiency encoding, low screen brightness, and remote wake.
+            </Text>
+          </TouchableOpacity>
+
+          {/* Viewer Role Card */}
+          <TouchableOpacity
+            activeOpacity={0.85}
+            onPress={() => setSelectedRole('viewer')}
+            style={[
+              styles.roleCard,
+              {
+                backgroundColor: theme.surface.card,
+                borderColor: selectedRole === 'viewer' ? theme.accent.primary : theme.border.primary,
+              },
+              selectedRole === 'viewer' && {
+                borderWidth: 1.5,
+                shadowColor: theme.accent.primary,
+                shadowOffset: { width: 0, height: 6 },
+                shadowOpacity: 0.16,
+                shadowRadius: 16,
+                elevation: 4,
+              },
+            ]}
           >
-            <Text style={styles.cardEmoji}>👁️</Text>
-            <Text style={styles.cardTitle}>Viewer / Monitor</Text>
-            <Text style={styles.cardDescription}>
-              Watch your cameras live, talk back, control flash, and start recordings.
-            </Text>
-            <View style={styles.cardFeatures}>
-              <Text style={styles.featureText}>• Watch live feed</Text>
-              <Text style={styles.featureText}>• Two-way audio</Text>
-              <Text style={styles.featureText}>• Remote controls</Text>
-              <Text style={styles.featureText}>• Wake up cameras</Text>
-            </View>
-            {isRegistering && selectedRole === 'viewer' && (
-              <ActivityIndicator color="#FFF" style={styles.loader} />
-            )}
-          </LinearGradient>
-        </TouchableOpacity>
-      </View>
+            <View style={styles.cardHeaderRow}>
+              <View style={styles.cardTitleWrap}>
+                <View
+                  style={[
+                    styles.roleIconWrap,
+                    {
+                      backgroundColor: selectedRole === 'viewer'
+                        ? theme.accent.primaryMuted
+                        : theme.surface.surface2,
+                    },
+                  ]}
+                >
+                  <Eye
+                    size={16}
+                    color={selectedRole === 'viewer' ? theme.accent.primary : theme.text.secondary}
+                  />
+                </View>
+                <View>
+                  <Text style={[styles.roleTitle, { color: theme.text.primary }]}>
+                    Viewer device
+                  </Text>
+                  <Text style={[styles.roleSubtitle, { color: theme.text.secondary }]}>
+                    Handheld monitor for viewing feeds
+                  </Text>
+                </View>
+              </View>
 
-      {/* Footer */}
-      <Text style={styles.footer}>
-        You can change this later in Settings
-      </Text>
-    </LinearGradient>
+              <View
+                style={[
+                  styles.roleBadge,
+                  {
+                    backgroundColor: theme.surface.surface2,
+                    borderColor: theme.border.primary,
+                  },
+                ]}
+              >
+                <Text style={[styles.badgeText, { color: theme.text.secondary }]}>
+                  Handheld
+                </Text>
+              </View>
+            </View>
+
+            <Text style={[styles.cardDescription, { color: theme.text.secondary }]}>
+              Provides low latency playback, push-to-talk audio, flashlight toggle, zoom and clip review.
+            </Text>
+          </TouchableOpacity>
+        </View>
+
+        {/* Detected Device Info Card */}
+        <View
+          style={[
+            styles.infoCard,
+            {
+              backgroundColor: theme.surface.surface2,
+              borderColor: theme.border.primary,
+            },
+          ]}
+        >
+          <View style={styles.deviceRow}>
+            <View style={styles.deviceLabelWrap}>
+              <Smartphone size={14} color={theme.text.secondary} />
+              <Text style={[styles.deviceLabel, { color: theme.text.secondary }]}>
+                Detected device
+              </Text>
+            </View>
+            <View
+              style={[
+                styles.deviceModelPill,
+                {
+                  backgroundColor: theme.surface.card,
+                  borderColor: theme.border.primary,
+                },
+              ]}
+            >
+              <Text style={[styles.deviceModelText, { color: theme.text.primary }]}>
+                {deviceModel}
+              </Text>
+            </View>
+          </View>
+        </View>
+
+        {/* Dynamic CTA Button */}
+        <View style={styles.ctaWrapper}>
+          <VButton
+            title={selectedRole === 'camera' ? 'Save and start camera' : 'Save and start viewer'}
+            onPress={handleSave}
+            variant="primary"
+            size="lg"
+            loading={isRegistering}
+            fullWidth
+          />
+        </View>
+      </ScrollView>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    justifyContent: 'center',
-    paddingHorizontal: 24,
   },
-  header: {
+  scrollContent: {
+    paddingHorizontal: 20,
+  },
+  topBar: {
+    flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: 32,
-  },
-  emoji: {
-    fontSize: 48,
-    marginBottom: 16,
-  },
-  title: {
-    fontSize: 28,
-    fontFamily: 'Inter_700Bold',
-    color: '#FFFFFF',
-    letterSpacing: -0.5,
-  },
-  subtitle: {
-    fontSize: 15,
-    fontFamily: 'Inter_400Regular',
-    color: 'rgba(255,255,255,0.5)',
-    marginTop: 8,
-    textAlign: 'center',
-  },
-  cardsContainer: {
-    gap: 16,
-  },
-  card: {
-    borderRadius: 20,
-    overflow: 'hidden',
-    borderWidth: 2,
-    borderColor: 'transparent',
-  },
-  cardSelected: {
-    borderColor: '#60A5FA',
-  },
-  cardGradient: {
-    padding: 24,
-  },
-  cardEmoji: {
-    fontSize: 36,
-    marginBottom: 12,
-  },
-  cardTitle: {
-    fontSize: 22,
-    fontFamily: 'Inter_700Bold',
-    color: '#FFFFFF',
+    justifyContent: 'space-between',
     marginBottom: 6,
   },
-  cardDescription: {
+  kicker: {
+    fontSize: 10,
+    fontWeight: '600',
+    letterSpacing: 1.2,
+    marginBottom: 4,
+  },
+  screenTitle: {
+    fontSize: 22,
+    fontWeight: '700',
+    letterSpacing: -0.4,
+  },
+  subtitle: {
+    fontSize: 12,
+    lineHeight: 17,
+    marginBottom: 16,
+  },
+  iconButton: {
+    width: 36,
+    height: 36,
+    borderRadius: 12,
+    borderWidth: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  roleCardsGroup: {
+    gap: 12,
+    marginBottom: 14,
+  },
+  roleCard: {
+    borderRadius: radii.card,
+    borderWidth: 1,
+    padding: 16,
+  },
+  cardHeaderRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 10,
+  },
+  cardTitleWrap: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    flex: 1,
+  },
+  roleIconWrap: {
+    width: 32,
+    height: 32,
+    borderRadius: 11,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  roleTitle: {
     fontSize: 14,
-    fontFamily: 'Inter_400Regular',
-    color: 'rgba(255,255,255,0.7)',
-    lineHeight: 20,
-    marginBottom: 12,
+    fontWeight: '700',
+    letterSpacing: -0.2,
   },
-  cardFeatures: {
-    gap: 4,
+  roleSubtitle: {
+    fontSize: 10,
+    marginTop: 1,
   },
-  featureText: {
-    fontSize: 13,
-    fontFamily: 'Inter_400Regular',
-    color: 'rgba(255,255,255,0.6)',
+  roleBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
+    paddingVertical: 5,
+    paddingHorizontal: 9,
+    borderRadius: radii.pill,
+    borderWidth: 1,
   },
-  loader: {
-    marginTop: 12,
+  badgeDot: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
   },
-  footer: {
-    fontSize: 13,
-    fontFamily: 'Inter_400Regular',
-    color: 'rgba(255,255,255,0.3)',
-    textAlign: 'center',
-    marginTop: 24,
+  badgeText: {
+    fontSize: 9.5,
+    fontWeight: '600',
+  },
+  cardDescription: {
+    fontSize: 11,
+    lineHeight: 16,
+  },
+  infoCard: {
+    borderRadius: radii.card,
+    borderWidth: 1,
+    padding: 14,
+    marginBottom: 18,
+  },
+  deviceRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  deviceLabelWrap: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
+  deviceLabel: {
+    fontSize: 11,
+    fontWeight: '500',
+  },
+  deviceModelPill: {
+    paddingVertical: 5,
+    paddingHorizontal: 10,
+    borderRadius: radii.pill,
+    borderWidth: 1,
+  },
+  deviceModelText: {
+    fontSize: 10.5,
+    fontWeight: '600',
+  },
+  ctaWrapper: {
+    marginTop: 4,
   },
 });

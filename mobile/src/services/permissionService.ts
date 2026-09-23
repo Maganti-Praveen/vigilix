@@ -5,6 +5,7 @@
  */
 
 import { Platform, Alert, Linking } from 'react-native';
+import { mediaDevices } from 'react-native-webrtc';
 
 export type PermissionStatus = 'granted' | 'denied' | 'undetermined' | 'blocked';
 
@@ -24,7 +25,7 @@ class PermissionService {
     try {
       // On Android, getUserMedia triggers the permission dialog
       // We test by actually requesting a stream
-      const stream = await (global as any).navigator.mediaDevices.getUserMedia({
+      const stream = await mediaDevices.getUserMedia({
         video: true,
         audio: true,
       });

@@ -51,7 +51,7 @@ class BackgroundService {
     if (Platform.OS === 'android' && StreamingService) {
       try {
         await StreamingService.start(options?.roomCode || '');
-        console.log('[BackgroundService] ✅ Native foreground service started');
+        console.log('[BackgroundService] Native foreground service started');
       } catch (error) {
         console.warn('[BackgroundService] Native service failed, using fallback:', error);
         await this.showFallbackNotification(options?.roomCode);
@@ -67,7 +67,7 @@ class BackgroundService {
       this.handleAppStateChange.bind(this)
     );
 
-    console.log('[BackgroundService] ✅ Started');
+    console.log('[BackgroundService] Started');
   }
 
   /**
@@ -106,7 +106,7 @@ class BackgroundService {
     this.onBackgroundCallback = null;
     this.onForegroundCallback = null;
 
-    console.log('[BackgroundService] 🛑 Stopped');
+    console.log('[BackgroundService] Stopped');
   }
 
   /**
@@ -116,10 +116,10 @@ class BackgroundService {
     console.log(`[BackgroundService] App state: ${nextAppState}`);
 
     if (nextAppState === 'background' || nextAppState === 'inactive') {
-      console.log('[BackgroundService] 📱 App backgrounded — stream continues');
+      console.log('[BackgroundService] App backgrounded — stream continues');
       this.onBackgroundCallback?.();
     } else if (nextAppState === 'active') {
-      console.log('[BackgroundService] 📱 App foregrounded');
+      console.log('[BackgroundService] App foregrounded');
       this.onForegroundCallback?.();
     }
   }
@@ -144,7 +144,7 @@ class BackgroundService {
 
       await Notifications.scheduleNotificationAsync({
         content: {
-          title: '📹 Vigilix Camera Active',
+          title: 'Vigilix Camera Active',
           body: roomCode ? `Streaming · Room: ${roomCode}` : 'Camera is streaming...',
           sticky: true,
           priority: Notifications.AndroidNotificationPriority.LOW,

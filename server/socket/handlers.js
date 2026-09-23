@@ -101,7 +101,7 @@ function initializeSocketHandlers(io) {
      * Leave current room
      */
     socket.on('leave-room', () => {
-      handleLeaveRoom(socket, io);
+      handleLeaveRoom(socket, io, true);
     });
 
     // ─── Stream Events ─────────────────────────────────────────
@@ -251,19 +251,24 @@ function initializeSocketHandlers(io) {
         return;
       }
 
-      socket.join(roomCode);
-      socket.roomCode = roomCode;
+      socket.join(room.code);
+      socket.roomCode = room.code;
       socket.role = role;
 
       if (role === 'camera') {
+        roomManager.cancelCameraGracePeriod(room.code);
         room.cameraSocketId = socket.id;
-        socket.to(roomCode).emit('camera-reconnected');
+        socket.to(room.code).emit('camera-reconnected');
+        console.log(`[Socket] Camera reconnected to room: ${room.code} (${socket.id})`);
       } else {
-        roomManager.joinRoom(roomCode, socket.id);
-        io.to(room.cameraSocketId).emit('viewer-connected', {
-          viewerSocketId: socket.id,
-          viewerCount: room.viewers.size,
-        });
+        roomManager.joinRoom(room.code, socket.id);
+        if (room.cameraSocketId) {
+          io.to(room.cameraSocketId).emit('viewer-connected', {
+            viewerSocketId: socket.id,
+            viewerCount: room.viewers.size,
+          });
+        }
+        console.log(`[Socket] Viewer reconnected to room: ${room.code} (${socket.id})`);
       }
 
       if (typeof callback === 'function') {
@@ -279,7 +284,7 @@ function initializeSocketHandlers(io) {
 
     socket.on('disconnect', (reason) => {
       console.log(`[Socket] Client disconnected: ${socket.id} (${reason})`);
-      handleLeaveRoom(socket, io);
+      handleLeaveRoom(socket, io, false);
     });
   });
 }
@@ -288,28 +293,40 @@ function initializeSocketHandlers(io) {
  * Handle client leaving a room (or disconnecting)
  * @param {import('socket.io').Socket} socket
  * @param {import('socket.io').Server} io
+ * @param {boolean} [isExplicitLeave=false] - Whether client explicitly requested to leave
  */
-function handleLeaveRoom(socket, io) {
+function handleLeaveRoom(socket, io, isExplicitLeave = false) {
   if (!socket.roomCode) return;
 
-  const room = roomManager.getRoom(socket.roomCode);
+  const currentRoomCode = socket.roomCode;
+  const room = roomManager.getRoom(currentRoomCode);
   if (!room) return;
 
   if (socket.role === 'camera') {
-    // Camera disconnected — notify all viewers
-    socket.to(socket.roomCode).emit('camera-offline');
-    roomManager.deleteRoom(socket.roomCode);
-    console.log(`[Socket] Camera disconnected, room ${socket.roomCode} deleted`);
+    socket.to(currentRoomCode).emit('camera-offline');
+    if (isExplicitLeave) {
+      // Explicit leave (user tapped Stop & Exit) -> delete room immediately
+      roomManager.deleteRoom(currentRoomCode);
+      console.log(`[Socket] Camera explicitly left, room ${currentRoomCode} deleted`);
+    } else {
+      // Disconnection / network blip -> give 90s grace period for camera to auto-reconnect
+      console.log(`[Socket] Camera disconnected from room ${currentRoomCode}, starting 90s grace period`);
+      roomManager.setCameraOffline(currentRoomCode, () => {
+        io.to(currentRoomCode).emit('room-closed', { reason: 'Camera disconnected timeout' });
+      });
+    }
   } else if (socket.role === 'viewer') {
     // Viewer disconnected — notify camera
-    roomManager.leaveRoom(socket.roomCode, socket.id);
-    io.to(room.cameraSocketId).emit('viewer-disconnected', {
-      viewerSocketId: socket.id,
-      viewerCount: room.viewers.size,
-    });
+    roomManager.leaveRoom(currentRoomCode, socket.id);
+    if (room.cameraSocketId) {
+      io.to(room.cameraSocketId).emit('viewer-disconnected', {
+        viewerSocketId: socket.id,
+        viewerCount: room.viewers.size,
+      });
+    }
   }
 
-  socket.leave(socket.roomCode);
+  socket.leave(currentRoomCode);
   socket.roomCode = null;
   socket.role = null;
 }

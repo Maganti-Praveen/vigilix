@@ -11,6 +11,7 @@
 
 import { io, Socket } from 'socket.io-client';
 import { SERVER_URL } from '../constants';
+import apiService from './apiService';
 
 type ListenerEntry = { event: string; callback: (...args: any[]) => void };
 
@@ -37,6 +38,7 @@ class SocketService {
     }
 
     console.log('[SocketService] Connecting to:', SERVER_URL);
+    const token = apiService.getToken();
 
     this.socket = io(SERVER_URL, {
       transports: ['polling', 'websocket'],
@@ -47,6 +49,7 @@ class SocketService {
       reconnectionDelayMax: 5000,
       timeout: 15000,
       forceNew: false,
+      auth: token ? { token } : undefined,
     });
 
     // Apply any buffered listeners
@@ -59,23 +62,23 @@ class SocketService {
     }
 
     this.socket.on('connect', () => {
-      console.log('[SocketService] ✅ Connected! Socket ID:', this.socket?.id);
+      console.log('[SocketService] Connected! Socket ID:', this.socket?.id);
     });
 
     this.socket.on('disconnect', (reason) => {
-      console.log('[SocketService] ❌ Disconnected:', reason);
+      console.log('[SocketService] Disconnected:', reason);
     });
 
     this.socket.on('connect_error', (error) => {
-      console.error('[SocketService] ❌ Connection error:', error.message);
+      console.error('[SocketService] Connection error:', error.message);
     });
 
     this.socket.on('reconnect', (attemptNumber: number) => {
-      console.log('[SocketService] 🔄 Reconnected after', attemptNumber, 'attempts');
+      console.log('[SocketService] Reconnected after', attemptNumber, 'attempts');
     });
 
     this.socket.on('reconnect_attempt', (attemptNumber: number) => {
-      console.log('[SocketService] 🔄 Reconnection attempt:', attemptNumber);
+      console.log('[SocketService] Reconnection attempt:', attemptNumber);
     });
 
     return this.socket;
@@ -100,11 +103,11 @@ class SocketService {
    */
   emit(event: string, data?: any, callback?: (response: any) => void): void {
     if (!this.socket?.connected) {
-      console.warn('[SocketService] ⚠️ Cannot emit', event, '- not connected');
+      console.warn('[SocketService] Cannot emit', event, '- not connected');
       return;
     }
 
-    console.log('[SocketService] 📤 Emit:', event, data !== undefined ? JSON.stringify(data).slice(0, 100) : '(no data)');
+    console.log('[SocketService] Emit:', event, data !== undefined ? JSON.stringify(data).slice(0, 100) : '(no data)');
 
     if (callback && data !== undefined) {
       this.socket.emit(event, data, callback);
@@ -126,7 +129,7 @@ class SocketService {
       this.socket.on(event, callback);
     } else {
       // Buffer for later
-      console.log('[SocketService] 📦 Buffering listener for:', event);
+      console.log('[SocketService] Buffering listener for:', event);
       this.pendingListeners.push({ event, callback });
     }
   }

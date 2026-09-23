@@ -146,18 +146,10 @@ function AppContent() {
           />
         )}
 
-        {currentScreen === 'login' && (
+        {(currentScreen === 'login' || currentScreen === 'register') && (
           <AuthScreen
-            mode="login"
-            onSwitchMode={() => setCurrentScreen('register')}
-            onBack={() => setCurrentScreen('welcome')}
-          />
-        )}
-
-        {currentScreen === 'register' && (
-          <AuthScreen
-            mode="register"
-            onSwitchMode={() => setCurrentScreen('login')}
+            mode={currentScreen}
+            onSwitchMode={(mode) => setCurrentScreen(mode)}
             onBack={() => setCurrentScreen('welcome')}
           />
         )}

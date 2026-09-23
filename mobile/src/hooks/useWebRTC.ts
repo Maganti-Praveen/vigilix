@@ -30,6 +30,7 @@ export function useWebRTC() {
   // Use refs to avoid stale closures in socket event handlers
   const modeRef = useRef(mode);
   modeRef.current = mode;
+  const targetPeerSocketIdRef = useRef<string | null>(null);
 
   /**
    * Initialize local media stream (camera mode)
@@ -40,13 +41,13 @@ export function useWebRTC() {
       quality: VideoQualityPreset = 'medium'
     ) => {
       try {
-        console.log('[useWebRTC] 📷 Initializing local stream, facing:', facingMode);
+        console.log('[useWebRTC] Initializing local stream, facing:', facingMode);
         const stream = await webrtcService.getLocalStream(facingMode, quality);
-        console.log('[useWebRTC] ✅ Local stream set, tracks:', stream.getTracks().length);
+        console.log('[useWebRTC] Local stream set, tracks:', stream.getTracks().length);
         setLocalStream(stream);
         return stream;
       } catch (error: any) {
-        console.error('[useWebRTC] ❌ Camera error:', error.message);
+        console.error('[useWebRTC] Camera error:', error.message);
         setError(`Camera error: ${error.message}`);
         throw error;
       }
@@ -60,22 +61,23 @@ export function useWebRTC() {
   const startAsCamera = useCallback(
     async (viewerSocketId: string) => {
       try {
-        console.log('[useWebRTC] 🎥 Starting as camera for viewer:', viewerSocketId);
+        console.log('[useWebRTC] Starting as camera for viewer:', viewerSocketId);
+        targetPeerSocketIdRef.current = viewerSocketId;
 
         webrtcService.setCallbacks({
           onRemoteStream: (stream: MediaStream) => {
-            console.log('[useWebRTC] 📥 Remote stream received (talk-back)');
+            console.log('[useWebRTC] Remote stream received (talk-back)');
             setRemoteStream(stream);
           },
           onICECandidate: (candidate: any) => {
-            console.log('[useWebRTC] 🧊 Sending ICE candidate to viewer');
+            console.log('[useWebRTC] Sending ICE candidate to viewer');
             socketService.emit(SOCKET_EVENTS.ICE_CANDIDATE, {
               targetSocketId: viewerSocketId,
               candidate,
             });
           },
           onConnectionStateChange: (state: string) => {
-            console.log('[useWebRTC] 📶 Camera connection state:', state);
+            console.log('[useWebRTC] Camera connection state:', state);
             if (state === 'connected' || state === 'completed') {
               setPeerConnected(true);
               setConnectionStatus('connected');
@@ -92,26 +94,26 @@ export function useWebRTC() {
             }
           },
           onDisconnected: () => {
-            console.log('[useWebRTC] ❌ Peer disconnected');
+            console.log('[useWebRTC] Peer disconnected');
             setPeerConnected(false);
           },
         });
 
-        console.log('[useWebRTC] 🔧 Creating peer connection...');
+        console.log('[useWebRTC] Creating peer connection...');
         webrtcService.createPeerConnection();
 
-        console.log('[useWebRTC] 📋 Creating offer...');
+        console.log('[useWebRTC] Creating offer...');
         const offer = await webrtcService.createOffer();
 
-        console.log('[useWebRTC] 📤 Sending offer to viewer:', viewerSocketId);
+        console.log('[useWebRTC] Sending offer to viewer:', viewerSocketId);
         socketService.emit(SOCKET_EVENTS.OFFER, {
           targetSocketId: viewerSocketId,
           sdp: offer,
         });
 
-        console.log('[useWebRTC] ✅ Offer sent to viewer');
+        console.log('[useWebRTC] Offer sent to viewer');
       } catch (error: any) {
-        console.error('[useWebRTC] ❌ WebRTC camera error:', error.message);
+        console.error('[useWebRTC] WebRTC camera error:', error.message);
         setError(`WebRTC error: ${error.message}`);
       }
     },
@@ -124,33 +126,47 @@ export function useWebRTC() {
   const startAsViewer = useCallback(
     async (cameraSocketId: string, offer: any) => {
       try {
-        console.log('[useWebRTC] 👁️ Starting as viewer for camera:', cameraSocketId);
+        console.log('[useWebRTC] Starting as viewer for camera:', cameraSocketId);
+        targetPeerSocketIdRef.current = cameraSocketId;
+
+        const existingPc = webrtcService.getPeerConnection();
+        if (existingPc && existingPc.signalingState !== 'closed') {
+          console.log('[useWebRTC] Updating existing peer connection with new offer...');
+          await webrtcService.setRemoteDescription(offer);
+          const answer = await webrtcService.createAnswer();
+          socketService.emit(SOCKET_EVENTS.ANSWER, {
+            targetSocketId: cameraSocketId,
+            sdp: answer,
+          });
+          console.log('[useWebRTC] Re-negotiated answer sent to camera');
+          return;
+        }
 
         // Step 1: Get viewer's microphone for talk-back (starts muted)
         try {
-          console.log('[useWebRTC] 🎙️ Getting viewer mic for talk-back...');
+          console.log('[useWebRTC] Getting viewer mic for talk-back...');
           const audioStream = await webrtcService.getAudioOnlyStream();
           setLocalStream(audioStream);
-          console.log('[useWebRTC] ✅ Viewer mic ready (muted by default)');
+          console.log('[useWebRTC] Viewer mic ready (muted by default)');
         } catch (micError: any) {
-          console.warn('[useWebRTC] ⚠️ Mic not available, talk-back disabled:', micError.message);
+          console.warn('[useWebRTC] Mic not available, talk-back disabled:', micError.message);
           // Continue without mic — viewer can still watch
         }
 
         webrtcService.setCallbacks({
           onRemoteStream: (stream: MediaStream) => {
-            console.log('[useWebRTC] 📥 Remote stream received from camera');
+            console.log('[useWebRTC] Remote stream received from camera');
             setRemoteStream(stream);
           },
           onICECandidate: (candidate: any) => {
-            console.log('[useWebRTC] 🧊 Sending ICE candidate to camera');
+            console.log('[useWebRTC] Sending ICE candidate to camera');
             socketService.emit(SOCKET_EVENTS.ICE_CANDIDATE, {
               targetSocketId: cameraSocketId,
               candidate,
             });
           },
           onConnectionStateChange: (state: string) => {
-            console.log('[useWebRTC] 📶 Viewer connection state:', state);
+            console.log('[useWebRTC] Viewer connection state:', state);
             if (state === 'connected' || state === 'completed') {
               setPeerConnected(true);
               setConnectionStatus('connected');
@@ -179,9 +195,9 @@ export function useWebRTC() {
           sdp: answer,
         });
 
-        console.log('[useWebRTC] ✅ Answer sent to camera (with audio track for talk-back)');
+        console.log('[useWebRTC] Answer sent to camera (with audio track for talk-back)');
       } catch (error: any) {
-        console.error('[useWebRTC] ❌ WebRTC viewer error:', error.message);
+        console.error('[useWebRTC] WebRTC viewer error:', error.message);
         setError(`WebRTC error: ${error.message}`);
       }
     },
@@ -193,11 +209,11 @@ export function useWebRTC() {
    */
   const handleAnswer = useCallback(async (sdp: any) => {
     try {
-      console.log('[useWebRTC] 📥 Handling answer from viewer');
+      console.log('[useWebRTC] Handling answer from viewer');
       await webrtcService.setRemoteDescription(sdp);
-      console.log('[useWebRTC] ✅ Remote description set from answer');
+      console.log('[useWebRTC] Remote description set from answer');
     } catch (error: any) {
-      console.error('[useWebRTC] ❌ Error handling answer:', error);
+      console.error('[useWebRTC] Error handling answer:', error);
     }
   }, []);
 
@@ -208,7 +224,7 @@ export function useWebRTC() {
     try {
       await webrtcService.addICECandidate(candidate);
     } catch (error: any) {
-      console.error('[useWebRTC] ❌ Error adding ICE candidate:', error);
+      console.error('[useWebRTC] Error adding ICE candidate:', error);
     }
   }, []);
 
@@ -227,12 +243,13 @@ export function useWebRTC() {
   const cleanup = useCallback(() => {
     if (isCleanedUpRef.current) return;
     isCleanedUpRef.current = true;
-    console.log('[useWebRTC] 🧹 Cleaning up WebRTC');
+    console.log('[useWebRTC] Cleaning up WebRTC');
     if (reconnectTimerRef.current) {
       clearTimeout(reconnectTimerRef.current);
       reconnectTimerRef.current = null;
     }
     webrtcService.cleanup();
+    targetPeerSocketIdRef.current = null;
     setLocalStream(null);
     setRemoteStream(null);
     setPeerConnected(false);
@@ -248,7 +265,7 @@ export function useWebRTC() {
     setReconnectAttempt(prev => {
       const attempt = prev + 1;
       if (attempt > maxReconnectAttempts) {
-        console.log('[useWebRTC] ❌ Max reconnect attempts reached');
+        console.log('[useWebRTC] Max reconnect attempts reached');
         setError('Connection lost. Please rejoin the room.');
         setConnectionStatus('disconnected');
         return prev;
@@ -258,20 +275,24 @@ export function useWebRTC() {
       const delays = [0, 2000, 5000, 10000];
       const delay = delays[Math.min(attempt - 1, delays.length - 1)];
 
-      console.log(`[useWebRTC] 🔄 Reconnect attempt ${attempt}/${maxReconnectAttempts} in ${delay}ms`);
+      console.log(`[useWebRTC] Reconnect attempt ${attempt}/${maxReconnectAttempts} in ${delay}ms`);
 
       reconnectTimerRef.current = setTimeout(async () => {
         try {
           const pc = webrtcService.getPeerConnection();
-          if (pc && pc.iceConnectionState !== 'closed') {
+          const targetPeer = targetPeerSocketIdRef.current;
+          if (pc && pc.iceConnectionState !== 'closed' && targetPeer) {
             // Try ICE restart first
-            console.log('[useWebRTC] 🧊 Attempting ICE restart...');
+            console.log('[useWebRTC] Attempting ICE restart for peer:', targetPeer);
             const offer = await pc.createOffer({ iceRestart: true } as any);
             await pc.setLocalDescription(offer as any);
 
             // Send re-offer via signaling
-            // The existing socket listeners will handle the answer
-            console.log('[useWebRTC] 📤 ICE restart offer created');
+            socketService.emit(SOCKET_EVENTS.OFFER, {
+              targetSocketId: targetPeer,
+              sdp: offer,
+            });
+            console.log('[useWebRTC] ICE restart offer sent to peer:', targetPeer);
           }
         } catch (error) {
           console.warn('[useWebRTC] ICE restart failed:', error);
@@ -288,22 +309,22 @@ export function useWebRTC() {
   // Socket.IO buffers .on() calls and applies them once connected.
   useEffect(() => {
     isCleanedUpRef.current = false;
-    console.log('[useWebRTC] 🔌 Setting up signaling listeners, mode:', mode);
+    console.log('[useWebRTC] Setting up signaling listeners, mode:', mode);
 
     const handleViewerConnected = ({ viewerSocketId }: any) => {
       const currentMode = modeRef.current;
-      console.log('[useWebRTC] 👁️ viewer-connected event received, viewerSocketId:', viewerSocketId, 'mode:', currentMode);
+      console.log('[useWebRTC] viewer-connected event received, viewerSocketId:', viewerSocketId, 'mode:', currentMode);
       if (currentMode === 'camera') {
-        console.log('[useWebRTC] ✅ Mode is camera — initiating WebRTC with viewer');
+        console.log('[useWebRTC] Mode is camera — initiating WebRTC with viewer');
         startAsCamera(viewerSocketId);
       } else {
-        console.log('[useWebRTC] ⏭️ Ignoring viewer-connected (mode is:', currentMode, ')');
+        console.log('[useWebRTC] Ignoring viewer-connected (mode is:', currentMode, ')');
       }
     };
 
     const handleOffer = ({ sdp, senderSocketId }: any) => {
       const currentMode = modeRef.current;
-      console.log('[useWebRTC] 📥 offer event received, from:', senderSocketId, 'mode:', currentMode);
+      console.log('[useWebRTC] offer event received, from:', senderSocketId, 'mode:', currentMode);
       if (currentMode === 'viewer') {
         startAsViewer(senderSocketId, sdp);
       }
@@ -311,7 +332,7 @@ export function useWebRTC() {
 
     const handleAnswerEvent = ({ sdp }: any) => {
       const currentMode = modeRef.current;
-      console.log('[useWebRTC] 📥 answer event received, mode:', currentMode);
+      console.log('[useWebRTC] answer event received, mode:', currentMode);
       if (currentMode === 'camera') {
         handleAnswer(sdp);
       }
@@ -327,10 +348,10 @@ export function useWebRTC() {
     socketService.on(SOCKET_EVENTS.ANSWER, handleAnswerEvent);
     socketService.on(SOCKET_EVENTS.ICE_CANDIDATE, handleICE);
 
-    console.log('[useWebRTC] ✅ Signaling listeners registered');
+    console.log('[useWebRTC] Signaling listeners registered');
 
     return () => {
-      console.log('[useWebRTC] 🗑️ Removing signaling listeners');
+      console.log('[useWebRTC] Removing signaling listeners');
       socketService.off(SOCKET_EVENTS.VIEWER_CONNECTED, handleViewerConnected);
       socketService.off(SOCKET_EVENTS.OFFER, handleOffer);
       socketService.off(SOCKET_EVENTS.ANSWER, handleAnswerEvent);
