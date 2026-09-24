@@ -58,11 +58,12 @@ export const WEBRTC_CONFIG = {
   ],
 };
 
-// Server URL — auto-switches between local dev and production
+// Server URL — deployed production Render server
 const LOCAL_SERVER = 'http://192.168.31.53:3001';
 const PROD_SERVER = 'https://vigilix.onrender.com';
 
-export const SERVER_URL = __DEV__ ? LOCAL_SERVER : PROD_SERVER;
+// Always point to deployed Render server for standalone APK testing across devices
+export const SERVER_URL = PROD_SERVER;
 
 export const QUALITY_LEVELS = {
   EXCELLENT: 'excellent',

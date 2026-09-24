@@ -1,7 +1,7 @@
 {
-  "name": "smart-cctv-server",
-  "version": "1.0.0",
-  "description": "Smart CCTV signaling server",
+  "name": "vigilix-server",
+  "version": "1.2.0",
+  "description": "Vigilix WebRTC signaling and device management server",
   "main": "index.js",
   "scripts": {
     "start": "node index.js",

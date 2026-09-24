@@ -5,174 +5,104 @@
 <h1 align="center">Vigilix</h1>
 
 <p align="center">
-  <strong>Transform any Android phone into a smart security camera.</strong>
+  <strong>Transform any Android smartphone into an enterprise-grade smart security camera.</strong>
 </p>
 
 <p align="center">
-  Real-time P2P streaming · Bidirectional audio · Zero cloud dependency
+  Real-time P2P WebRTC streaming · Two-way talk-back audio · Camera2 hardware flashlight · Remote FCM wake-up
 </p>
 
 <p align="center">
+  <img src="https://img.shields.io/badge/Version-1.2.0-blue" alt="Version 1.2.0" />
   <img src="https://img.shields.io/badge/Platform-Android-3DDC84?logo=android&logoColor=white" alt="Android" />
   <img src="https://img.shields.io/badge/React_Native-Expo_SDK_54-000020?logo=expo&logoColor=white" alt="Expo" />
   <img src="https://img.shields.io/badge/WebRTC-P2P-FF6600?logo=webrtc&logoColor=white" alt="WebRTC" />
   <img src="https://img.shields.io/badge/Socket.IO-4.x-010101?logo=socket.io&logoColor=white" alt="Socket.IO" />
-  <img src="https://img.shields.io/badge/License-MIT-blue" alt="License" />
+  <img src="https://img.shields.io/badge/License-MIT-green" alt="License" />
 </p>
 
 ---
 
-## What is Vigilix?
+## Live Deployment
 
-Vigilix is an open-source mobile surveillance platform that turns old Android phones into smart home security cameras with **real-time peer-to-peer streaming**.
-
-No cloud. No subscription. No data leaves your network.
-
-- 📱 **Camera Mode** — Turn any phone into a security camera
-- 👁️ **Viewer Mode** — Watch live from another phone or browser
-- 🎙️ **Talk-Back** — Two-way audio communication
-- 🔦 **Remote Control** — Toggle flashlight remotely
-- 🔋 **Battery Aware** — Auto-optimizes quality on low battery
-- 🌐 **Web Viewer** — Watch from any browser on your network
+- **Production Signaling Server & Web Command Center:** [https://vigilix.onrender.com/](https://vigilix.onrender.com/)
+- **Latest Android Release APK:** `Vigilix-v1.2.0.apk`
 
 ---
 
-## How It Works
+## Overview
 
-```
-   📱 Camera Phone                         📱 Viewer / 💻 Browser
-   ┌─────────────┐                         ┌──────────────────┐
-   │  Captures    │ ◄───── WebRTC P2P ────►│  Displays        │
-   │  Video+Audio │    (direct, encrypted)  │  Live Stream     │
-   └──────┬──────┘                         └────────┬─────────┘
-          │                                         │
-          │  Socket.IO                    Socket.IO  │
-          └──────────►┌──────────────┐◄─────────────┘
-                      │   Signaling   │
-                      │    Server     │
-                      │  (room codes, │
-                      │   SDP relay)  │
-                      └──────────────┘
-```
+Vigilix is an open-source mobile surveillance platform that repurposes spare Android smartphones into secure, high-definition smart security cameras. By utilizing native WebRTC peer-to-peer protocols, video and audio streams transfer directly between the camera node and viewers without routing through intermediary servers.
 
-1. **Camera** starts streaming → gets a 6-character room code
-2. **Viewer** enters the code → server brokers the WebRTC handshake
-3. **Direct P2P** connection established — video streams device-to-device
-4. Server only relays signaling — **zero video passes through the server**
+### Core Capabilities
+
+- **Camera Mode:** Converts any Android device into an ultra-low latency streaming node with background support.
+- **Viewer Mode:** Connects to live camera streams on other Android devices or via the web viewer using a secure 6-character room code.
+- **Two-Way Talk-Back Audio:** Delivers high-gain, loudspeaker audio communication using native audio stream routing and Web Audio API dynamic range compression.
+- **Camera Switching:** Enables live toggling between front-facing and environment back cameras during an ongoing stream without peer reconnection.
+- **Camera2 Hardware Torch:** Uses Android native reflection on the active camera session to trigger hardware flashlights without camera conflicts.
+- **Remote Push-to-Wake (FCM):** Transmits high-priority Firebase Cloud Messaging data packets to wake backgrounded or idle camera devices on demand.
+- **Web Command Center:** Provides a dark glassmorphic desktop interface featuring real-time stream playback, hardware control toggles, and live connection metrics.
+- **Battery Optimization:** Tracks battery levels and charging states, automatically adjusting bitrates when running on low battery reserves.
 
 ---
 
-## Tech Stack
+## Architecture
 
-| Layer | Technology |
-|-------|-----------|
-| 📱 Mobile App | React Native · Expo SDK 54 · TypeScript |
-| 🎥 Streaming | WebRTC (react-native-webrtc) · P2P · Bidirectional |
-| 📡 Signaling | Socket.IO 4.x · Node.js · Express |
-| 🎨 UI System | Custom Design System · Inter Font · Dark/Light Themes |
-| 🔄 State | Zustand |
-| 🌐 Web Viewer | Vanilla JS · WebRTC · Glassmorphism UI |
-| 🔋 Native APIs | expo-battery · expo-keep-awake · expo-blur |
+```
+   Camera Device                           Viewer Device / Web Browser
+   +----------------------+                +----------------------+
+   | Camera & Audio Track | <== WebRTC ==> | Video & Audio Player |
+   | Capture & Encoding   |     (P2P)      | Dynamic Pre-Amp Mic  |
+   +----------+-----------+                +----------+-----------+
+              |                                       |
+              | Socket.IO Signaling                   | Socket.IO Signaling
+              v                                       v
+   +--------------------------------------------------------------+
+   |                  Vigilix Signaling Server                    |
+   |              Node.js + Express + Socket.IO                   |
+   |         (Room brokering, SDP exchange, FCM wake)             |
+   +--------------------------------------------------------------+
+```
+
+1. **Room Initialization:** The camera connects to the signaling server and creates a 6-character room code.
+2. **Viewer Handshake:** The viewer requests to join the room using the code.
+3. **P2P Establishment:** The signaling server brokers SDP offer/answer exchanges and ICE candidates. Once connected, media flows directly between nodes.
+4. **Zero Media Relaying:** Video and audio data are strictly peer-to-peer; no media packets pass through or get stored on the server.
 
 ---
 
-## Features
+## Technology Stack
 
-### 📷 Camera Mode
-- Live camera preview with RTCView
-- One-tap streaming with auto-generated room code
-- Front/back camera switching
-- Hardware flashlight with capability detection
-- Microphone toggle
-- Recording timer & indicator
-- Adaptive bitrate (auto-adjusts to network conditions)
-- Battery monitoring with low-power optimization
-- Keep-awake during streaming
-- Auto-reconnect with exponential backoff
-
-### 👁️ Viewer Mode
-- Clean room code input with validation
-- Full-screen live stream viewing
-- Two-way audio (talk-back)
-- Remote flashlight control
-- Camera battery status display
-- Connection quality indicator
-- Auto-reconnect + auto-rejoin room
-
-### 🌐 Web Viewer
-- Beautiful dark glassmorphism interface
-- WebRTC streaming in the browser
-- Talk-back microphone (HTTPS only)
-- Screenshot capture & download
-- Fullscreen mode
-- Remote flash toggle
-- Battery status display
-- Connection event log
-
-### 🎨 Design System
-- Premium Apple-like UI
-- Full dark + light theme support
-- Inter typography
-- Frosted glass (expo-blur) controls
-- Smooth animations (fade, slide, scale, pulse)
-- Reusable component library (VButton, VCard, VBadge, VGlass, VIconButton)
+| Component | Technologies |
+|-----------|--------------|
+| Mobile Application | React Native, Expo SDK 54, TypeScript, Native Kotlin |
+| Media Engine | WebRTC (`react-native-webrtc`), DTLS-SRTP encryption |
+| Signaling Server | Node.js, Express, Socket.IO 4.x |
+| Persistence & Database | MongoDB via Mongoose, JWT authentication, BCrypt |
+| Remote Push Notifications | Firebase Cloud Messaging (FCM) via Firebase Admin SDK |
+| Hardware Abstraction | Android Camera2 API, AudioManager, WakeLock, KeepAwake |
+| Web Dashboard | Vanilla JavaScript (ES6+), Web Audio API, Responsive Glassmorphism |
 
 ---
 
-## Quick Start
+## Features Breakdown
 
-### Prerequisites
+### Camera Node
+- Live camera preview with hardware-accelerated rendering.
+- Seamless front and back camera switching with fixed resolution and framerate constraints.
+- Native repeating request torch control directly on active camera threads.
+- Foreground service integration with persistent notifications for uninterrupted background streaming.
+- Adaptive bitrate scaling (300 kbps to 1.5 Mbps) based on network conditions and battery level.
+- Hardware wake-lock and screen keep-awake controls.
 
-- Node.js 18+
-- Android Studio with SDK 36
-- Physical Android phone with USB debugging
-- Computer and phone on the same WiFi
-
-### 1. Clone & Install
-
-```bash
-git clone https://github.com/YOUR_USERNAME/vigilix.git
-cd vigilix
-
-# Server
-cd server && npm install && cd ..
-
-# Mobile
-cd mobile && npm install && cd ..
-```
-
-### 2. Configure Network
-
-Find your computer's IP:
-```bash
-hostname -I | awk '{print $1}'
-```
-
-Update `mobile/src/constants/index.ts`:
-```typescript
-export const SERVER_URL = "http://YOUR_IP:3001";
-```
-
-### 3. Start Server
-
-```bash
-cd server && npm run dev
-```
-
-### 4. Build & Run App
-
-```bash
-cd mobile && npx expo run:android
-```
-
-> ⏱️ First build takes ~15 minutes. After that, use `npx expo start --dev-client`
-
-### 5. Web Viewer
-
-Open in any browser on your network:
-```
-http://YOUR_IP:3001/viewer.html
-```
+### Viewer & Web Command Center
+- Fullscreen low-latency playback with configurable aspect ratios.
+- Pre-amplified push-to-talk microphone pipeline with Web Audio DynamicsCompressor and 350% gain boost.
+- Remote hardware toggles for camera switching and flashlight.
+- Remote recording triggers and clip management.
+- Real-time battery, charging, and WebRTC connection telemetry.
+- Push-to-wake trigger for offline registered cameras.
 
 ---
 
@@ -180,115 +110,119 @@ http://YOUR_IP:3001/viewer.html
 
 ```
 vigilix/
-│
-├── 📱 mobile/                    React Native Expo App
-│   ├── App.tsx                   Entry point + navigation
-│   ├── assets/                   App icon, splash, logo
-│   └── src/
-│       ├── design/               Design system
-│       │   ├── tokens.ts         Colors, typography, spacing
-│       │   ├── themes.ts         Light + Dark themes
-│       │   ├── ThemeContext.tsx   Theme provider
-│       │   └── animations.ts     Animation hooks
-│       ├── components/
-│       │   ├── ui/               VButton, VCard, VBadge, VGlass...
-│       │   └── navigation/       BottomTabBar
-│       ├── screens/              Splash, Home, Camera, Viewer, Settings
-│       ├── hooks/                useSocket, useWebRTC, usePermissions
-│       ├── services/             socketService, webrtcService
-│       ├── store/                Zustand global state
-│       ├── constants/            Socket events, STUN config
-│       └── types/                TypeScript definitions
-│
-├── 🖥️ server/                    Node.js Signaling Server
-│   ├── index.js                  Express + Socket.IO entry
-│   ├── socket/handlers.js        15+ socket event handlers
-│   ├── services/roomManager.js   Room CRUD + lifecycle
-│   ├── routes/api.js             REST health/stats endpoints
-│   ├── utils/roomCode.js         Unique code generator
-│   └── public/viewer.html        Web viewer (605 lines)
-│
-└── 📦 shared/                    Shared constants
-    └── constants.js
+├── mobile/                      Mobile application (React Native / Expo)
+│   ├── android/                 Android native project (Kotlin modules & Gradle)
+│   ├── assets/                  App icons, splash graphics, and branding assets
+│   ├── src/
+│   │   ├── components/          Glassmorphic design system and UI elements
+│   │   ├── constants/           Configuration, endpoints, and quality presets
+│   │   ├── hooks/               WebRTC and Socket.IO React hooks
+│   │   ├── screens/             Camera, Viewer, Home, Auth, and Settings views
+│   │   ├── services/            Native hardware, WebRTC, API, and FCM services
+│   │   └── store/               Zustand application state stores
+│   ├── app.json                 Expo application configuration (v1.2.0)
+│   └── package.json
+├── server/                      Backend signaling & management service
+│   ├── middleware/              JWT authentication and request validation
+│   ├── models/                  MongoDB Device and User schemas
+│   ├── public/                  Web Command Center dashboard (viewer.html)
+│   ├── routes/                  REST endpoints (auth, devices, recordings, version)
+│   ├── services/                Room manager and Firebase Cloud Messaging service
+│   ├── socket/                  Socket.IO WebRTC signaling handlers
+│   ├── index.js                 Main server entry point
+│   └── package.json
+├── shared/                      Shared protocol events and constants
+├── CONTRIBUTING.md              Contribution guidelines
+├── LICENSE                      MIT License
+└── README.md                    Project documentation
 ```
 
 ---
 
-## Deployment
+## Getting Started
 
-### Deploy Server to Render (Free)
+### Prerequisites
+- Node.js 18.x or 20.x
+- npm 9.x or higher
+- Android Studio with Android SDK Platform 34 or higher
+- Physical Android phone for WebRTC camera testing
 
-1. Push to GitHub
-2. Go to [render.com](https://render.com) → New → Web Service
-3. Connect repo, set:
-   - **Root Directory**: `server`
-   - **Build**: `npm install`
-   - **Start**: `node index.js`
-   - **Plan**: Free
-4. Update `SERVER_URL` in mobile app to the Render URL
+### 1. Signaling Server Setup
 
-### Build APK
+```bash
+cd server
+npm install
+
+# Configure environment variables
+cp .env.example .env
+```
+
+Edit `server/.env`:
+```env
+PORT=3001
+MONGODB_URI=mongodb://localhost:27017/vigilix
+JWT_SECRET=your_jwt_secret_key_here
+CORS_ORIGIN=*
+```
+
+Start the signaling server:
+```bash
+# Development mode
+npm run dev
+
+# Production mode
+npm start
+```
+
+### 2. Mobile Application Setup
 
 ```bash
 cd mobile
-npx eas build --platform android --profile preview
+npm install
+
+# Connect physical device via ADB
+adb devices
+
+# Forward server and Metro ports
+adb reverse tcp:3001 tcp:3001
+adb reverse tcp:8081 tcp:8081
+
+# Run on Android device
+npx expo run:android
 ```
 
 ---
 
-## Architecture Decisions
+## Building the Release APK (Version 1.2.0)
 
-| Decision | Rationale |
-|----------|-----------|
-| **WebRTC P2P** | Zero-latency, no cloud video processing costs |
-| **Socket.IO** | Reliable signaling with auto-reconnect and fallback transports |
-| **Zustand** | Minimal boilerplate, excellent performance for global state |
-| **Expo SDK 54** | Access to native APIs (battery, keep-awake, blur) with managed workflow |
-| **In-memory rooms** | No database needed — rooms are ephemeral sessions |
-| **Custom design system** | Full control over premium look without external UI library overhead |
+To produce an optimized standalone release APK:
 
----
+```bash
+cd mobile/android
+./gradlew assembleRelease
+```
 
-## Privacy & Security
+The compiled release APK is generated at:
+```
+mobile/android/app/build/outputs/apk/release/app-release.apk
+```
 
-- 🔒 **No cloud** — Video never leaves your local network
-- 🔒 **P2P encrypted** — WebRTC uses DTLS-SRTP encryption by default
-- 🔒 **No accounts** — No sign-up, no tracking, no analytics
-- 🔒 **Ephemeral rooms** — Auto-deleted after 30 minutes of inactivity
-- 🔒 **Open source** — Full code transparency
+To install directly to a connected device:
+```bash
+adb install -r mobile/android/app/build/outputs/apk/release/app-release.apk
+```
 
 ---
 
-## Roadmap
+## Security and Privacy
 
-- [ ] Local video recording to device storage
-- [ ] Motion detection with on-device AI
-- [ ] Multi-camera dashboard
-- [ ] Push notifications via FCM
-- [ ] QR code room sharing
-- [ ] TURN server for external network access
-- [ ] iOS support
-
----
-
-## Contributing
-
-Contributions are welcome! Please:
-
-1. Fork the repo
-2. Create a feature branch (`git checkout -b feature/amazing-feature`)
-3. Commit your changes (`git commit -m 'Add amazing feature'`)
-4. Push to the branch (`git push origin feature/amazing-feature`)
-5. Open a Pull Request
+- **Direct End-to-End Encryption:** All WebRTC media streams are encrypted using DTLS (Datagram Transport Layer Security) and SRTP (Secure Real-Time Transport Protocol).
+- **Zero Video Retention:** No media streams, frames, or audio buffers pass through or are saved on the signaling server.
+- **Ephemeral Room Codes:** Room sessions expire automatically following 30 minutes of inactivity.
+- **Secure Token Authentication:** Device registration and remote wake-up endpoints are protected with JSON Web Tokens (JWT) and BCrypt password hashing.
 
 ---
 
 ## License
 
-MIT License — see [LICENSE](LICENSE) for details.
-
----
-
-<p align="center">
-  <sub>Built with ❤️ for the open-source community</sub>
-</p>
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.

@@ -216,7 +216,7 @@ These phases built the working foundation:
 **Bidirectional audio implementation:**
 - Viewer acquires mic-only stream via `getAudioOnlyStream()`
 - Audio tracks added to the existing `RTCPeerConnection`
-- Camera screen shows "🎙️ TALK-BACK" badge when viewer audio tracks are enabled
+- Camera screen shows "TALK-BACK" badge when viewer audio tracks are enabled
 - Viewer has separate Mute (incoming) and Talk (outgoing) controls
 
 ---
@@ -536,7 +536,7 @@ Server upgraded from local-only signaling to cloud-deployed full-stack:
 - Handles foreground + background messages
 - Wake callback triggers app open + auto-stream
 
-**HomeScreen**: "📡 Wake" button on offline camera cards
+**HomeScreen**: "Wake" button on offline camera cards
 
 ### 15.6 Phase 5: Native Background Service
 
@@ -552,7 +552,7 @@ Server upgraded from local-only signaling to cloud-deployed full-stack:
 
 ### 15.7 Phase 6: Remote Recording & Gallery
 
-- Viewer taps 🔴 Record → socket signals camera → captures frames
+- Viewer taps Record button -> socket signals camera -> captures frames
 - Recording metadata saved to MongoDB via REST API
 - `RecordingsScreen` — gallery with date groups, stats, delete
 - "Clips" tab added to BottomTabBar (5 tabs total)

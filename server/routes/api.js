@@ -34,23 +34,20 @@ router.get('/stats', (req, res) => {
  */
 router.get('/version', (req, res) => {
   res.json({
-    currentVersion: '1.1.0',
-    versionCode: 2,
+    currentVersion: '1.2.0',
+    versionCode: 3,
     minSupportedVersion: '1.0.0',
-    releaseDate: '2026-05-14',
+    releaseDate: '2026-09-24',
     downloadUrl: 'https://github.com/Maganti-Praveen/vigilix/releases/latest/download/Vigilix.apk',
     changelog: [
-      'Account login & registration',
-      'Device pairing with saved cameras',
-      'Push-to-wake offline cameras (FCM)',
-      'Native background foreground service',
-      'Remote recording from viewer',
-      'Recordings gallery',
-      'Improved audio quality (Opus 64kbps)',
-      'Auto-reconnect with ICE restart',
+      'Two-way talk-back audio with loudspeaker routing and Web Audio dynamic compression',
+      'Smooth front and back camera switching live during WebRTC streaming',
+      'Direct Camera2 hardware torch integration',
+      'High-priority FCM remote push wake-up',
+      'Modern glassmorphic Command Center web viewer dashboard',
     ],
     updateRequired: false,
-    updateAvailable: true,
+    updateAvailable: false,
   });
 });
 
