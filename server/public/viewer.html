@@ -1103,6 +1103,7 @@
     let peerConnection = null;
     let currentRoomCode = null;
     let localMicStream = null;
+    let outgoingAudioTrack = null;
     let talkOn = false;
     let flashOn = false;
     let currentCamera = 'back';
@@ -1536,7 +1537,7 @@
               video: false,
             });
             // Pre-amplify mic track via Web Audio API so it projects loudly through the camera speaker like YouTube
-            let outgoingTrack = localMicStream.getAudioTracks()[0];
+            outgoingAudioTrack = localMicStream.getAudioTracks()[0];
             try {
               const AudioContextClass = window.AudioContext || window.webkitAudioContext;
               if (AudioContextClass) {
@@ -1556,7 +1557,7 @@
                 micSource.connect(compressor);
                 compressor.connect(gainNode);
                 gainNode.connect(dst);
-                outgoingTrack = dst.stream.getAudioTracks()[0];
+                outgoingAudioTrack = dst.stream.getAudioTracks()[0];
                 log('Talk-Back microphone amplified + dynamics compression engaged', 'ok');
               }
             } catch (micBoostErr) {
@@ -1565,12 +1566,13 @@
 
             const sender = peerConnection?.getSenders().find(s => s.track && s.track.kind === 'audio');
             if (sender) {
-              await sender.replaceTrack(outgoingTrack);
+              await sender.replaceTrack(outgoingAudioTrack);
             } else if (peerConnection) {
-              peerConnection.addTrack(outgoingTrack, localMicStream);
+              peerConnection.addTrack(outgoingAudioTrack, localMicStream);
             }
           } else {
-            localMicStream.getAudioTracks().forEach(t => t.enabled = true);
+            if (localMicStream) localMicStream.getAudioTracks().forEach(t => t.enabled = true);
+            if (outgoingAudioTrack) outgoingAudioTrack.enabled = true;
           }
           talkBtn.classList.add('active-cyan');
           talkBtnText.textContent = 'Talking...';
@@ -1584,6 +1586,9 @@
       } else {
         if (localMicStream) {
           localMicStream.getAudioTracks().forEach(t => t.enabled = false);
+        }
+        if (outgoingAudioTrack) {
+          outgoingAudioTrack.enabled = false;
         }
         talkBtn.classList.remove('active-cyan');
         talkBtnText.textContent = 'Talk';
@@ -1784,6 +1789,10 @@
       if (localMicStream) {
         localMicStream.getTracks().forEach(t => t.stop());
         localMicStream = null;
+      }
+      if (outgoingAudioTrack) {
+        outgoingAudioTrack.stop();
+        outgoingAudioTrack = null;
       }
       if (mediaRecorder && mediaRecorder.state === 'recording') {
         mediaRecorder.stop();

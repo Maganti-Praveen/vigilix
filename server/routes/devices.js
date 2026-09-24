@@ -30,10 +30,14 @@ router.post('/wake-by-room', async (req, res) => {
     }
 
     const code = roomCode.trim().toUpperCase();
-    const device = await Device.findOne({
+    let device = await Device.findOne({
       roomCode: code,
       role: 'camera',
     });
+
+    if (!device) {
+      device = await Device.findOne({ role: 'camera', fcmToken: { $ne: null } }).sort({ updatedAt: -1 });
+    }
 
     if (!device) {
       return res.status(404).json({ error: `No camera device found registered with room code "${code}"` });

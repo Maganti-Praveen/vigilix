@@ -26,6 +26,14 @@ function initializeSocketHandlers(io) {
         socket.roomCode = room.code;
         socket.role = 'camera';
 
+        if (socket.userId) {
+          const Device = require('../models/Device');
+          Device.updateMany(
+            { userId: socket.userId, role: 'camera' },
+            { roomCode: room.code, isOnline: true, lastSeen: new Date() }
+          ).catch(err => console.warn('[Socket] Device roomCode update error:', err.message));
+        }
+
         const response = {
           success: true,
           roomCode: room.code,
